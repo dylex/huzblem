@@ -1,0 +1,15 @@
+@import "style.css";
+
+* {
+	color: #CCC !important;
+	background: none !important;
+	background-color: black !important;
+}
+a:link {
+	color: #FFF !important;
+}
+a:visited {
+	color: #999 !important;
+}
+
+/* vim:set et ts=4: */
