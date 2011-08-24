@@ -1,0 +1,39 @@
+#!/usr/bin/perl
+
+use strict;
+use HTML::Entities;
+
+my ($file) = (@ARGV, "$ENV{HOME}/.elinks/bookmarks");
+
+open my $in, '<', $file or die "$file: $!\n";
+
+print '<html><head><title>Elinks Bookmarks</title></head><body>';
+my $l = -1;
+
+while (<$in>)
+{
+	chomp;
+	my ($name, $url, $level, $flags) = split /\t/;
+	if ($l == $level) {
+		#print '</li>';
+	}
+	while ($l < $level) {
+		print '<ul>';
+		$l ++;
+	}
+	while ($l > $level) {
+		print '</ul>';
+		$l --;
+	}
+
+	print '<li>';
+	print '<a href="' . encode_entities($url) . '">' if $url ne '';
+	print encode_entities($name);
+	print '</a>' if $url ne '';
+	print '</li>';
+}
+while ($l > -1) {
+	print '</ul>';
+	$l --;
+}
+print '</body></html>';

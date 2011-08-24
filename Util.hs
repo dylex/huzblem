@@ -16,6 +16,8 @@ module Util
 
 import Control.Monad
 import Data.Char
+import Data.Maybe
+import Numeric
 import System.Exit
 import System.IO
 import System.Process
@@ -94,7 +96,7 @@ mlEscape (c:s)
     || (0x0e <= i && i <= 0x1f) 
     || (0x7f <= i && i <= 0x84) 
     || (0x86 <= i && i <= 0x9f)
-    = "&#" ++ show i ++ ';' : mlEscape s
+    = "&#x" ++ showHex i (';' : mlEscape s)
   | otherwise = c : mlEscape s 
   where i = ord c
 

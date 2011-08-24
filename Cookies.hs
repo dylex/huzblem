@@ -1,17 +1,24 @@
 module Cookies 
-  ( Cookies
+  ( Cookie
+  , cookieDomain
+  , Cookies
   , emptyCookies
-  , loadElinksCookies
+  , loadCookies, loadElinksCookies
+  , saveCookies
   , cookiesArgs
   , argCookie
+  , cookieAdd
   ) where
 
 import Control.Monad
 import Data.Function
+import Data.List
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Set as Set
 import Data.Time.Clock.POSIX
+
+import Safe
 
 import Util
 
@@ -32,23 +39,26 @@ emptyCookies = Set.empty
 parseElinksCookie :: String -> Maybe Cookie
 parseElinksCookie = pec . splitOn ('\t'==) where
   pec [name, value, _server, path, domain, expire, secure] = Just $ Cookie
-    { cookieName = name
-    , cookieValue = value
+    { cookieDomain = '.':domain
     , cookiePath = path
-    , cookieDomain = '.':domain
-    , cookieExpire = Just $ fromInteger $ read expire
+    , cookieName = name
+    , cookieValue = value
     , cookieSecure = secure /= "0"
+    , cookieExpire = fmap fromInteger $ readMay expire
     }
   pec _ = Nothing
 
-loadElinksCookies :: FilePath -> IO Cookies
-loadElinksCookies f = Set.fromList . mapMaybe parseElinksCookie . lines =.< readFile f
-
-cookieArgs :: Cookie -> [String]
-cookieArgs c = [cookieDomain c, cookiePath c, cookieName c, cookieValue c, if cookieSecure c then "https" else "http", maybe "" ((show :: Integer -> String) . round) $ cookieExpire c]
-
-cookiesArgs :: Cookies -> [[String]]
-cookiesArgs = map cookieArgs . Set.toList
+parseCookie :: String -> Maybe Cookie
+parseCookie = pc . splitOn ('\t'==) where
+  pc [domain, _flag, path, secure, expire, name, value] = Just $ Cookie
+    { cookieDomain = domain
+    , cookiePath = path
+    , cookieName = name
+    , cookieValue = value
+    , cookieSecure = secure `notElem` ["FALSE","0"]
+    , cookieExpire = fmap fromInteger $ readMay expire
+    }
+  pc _ = Nothing
 
 argCookie :: [String] -> Maybe Cookie
 argCookie [domain,path,name,value,scheme,expire] = Just $ Cookie
@@ -57,7 +67,45 @@ argCookie [domain,path,name,value,scheme,expire] = Just $ Cookie
   , cookieName = name
   , cookieValue = value
   , cookieSecure = scheme == "https"
-  , cookieExpire = guard (not $ null expire) >. fromInteger (read expire)
+  , cookieExpire = guard (not $ null expire) >> readMay expire >.= fromInteger
   }
 argCookie [domain,path,name,value,scheme] = argCookie [domain,path,name,value,scheme,""]
 argCookie _ = Nothing
+
+cookieExpires :: Cookie -> String
+cookieExpires = maybe "" ((show :: Integer -> String) . round) . cookieExpire
+
+writeCookie :: Cookie -> String
+writeCookie = intercalate "\t" . wc where
+  wc c = 
+    [ cookieDomain c
+    , tf (headMay (cookieDomain c) == Just '.')
+    , cookiePath c
+    , tf $ cookieSecure c
+    , cookieExpires c 
+    , cookieName c
+    , cookieValue c
+    ]
+  tf False = "FALSE"
+  tf True = "TRUE"
+
+cookieArgs :: Cookie -> [String]
+cookieArgs c = [cookieDomain c, cookiePath c, cookieName c, cookieValue c, if cookieSecure c then "https" else "http", cookieExpires c]
+
+loadCookiesWith :: (String -> Maybe Cookie) -> FilePath -> IO Cookies
+loadCookiesWith c = Set.fromList . mapMaybe c . lines .=< readFile
+
+loadElinksCookies :: FilePath -> IO Cookies
+loadElinksCookies = loadCookiesWith parseElinksCookie
+
+loadCookies :: FilePath -> IO Cookies
+loadCookies = loadCookiesWith parseCookie
+
+saveCookies :: FilePath -> Cookies -> IO ()
+saveCookies f = writeFile f . unlines . map writeCookie . Set.toList
+
+cookiesArgs :: Cookies -> [[String]]
+cookiesArgs = map cookieArgs . Set.toList
+
+cookieAdd :: Cookie -> Cookies -> Cookies
+cookieAdd = Set.insert

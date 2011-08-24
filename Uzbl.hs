@@ -11,9 +11,10 @@ module Uzbl
 
   , ask, modify, get
   , io
-  , log, logPrint
-  , run
-  , getVar, setVar
+  , log, logPrint, debug
+  , run, runOthers
+  , getVar, getVarInt, getVarStr
+  , setVar
   , resetVar, toggleVar, onOff
   , uzblURI, uri
   , newUzbl
@@ -21,7 +22,7 @@ module Uzbl
 
 import Prelude hiding (log)
 
-import Control.Concurrent (ThreadId, MVar)
+import Control.Concurrent
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List
@@ -30,6 +31,8 @@ import Data.Maybe
 import Data.Word
 import System.IO
 import System.Posix.Types (ProcessID)
+
+import Safe
 
 import Util
 import Config
@@ -47,6 +50,7 @@ data UzblGlobal = UzblGlobal
   { uzblemSocket :: !FilePath
   , uzblemClients :: MVar Clients
   , uzblCookies :: MVar Cookies
+  , uzblDebug :: Bool
   }
 
 data UzblClient = UzblClient
@@ -110,18 +114,40 @@ log s = do
     ++ maybe "" (\(e,a) -> ' ' : show e ++ ' ' : show a) (uzblEvent u)
     ++ if null s then "" else ':':' ':s
 
+debug :: (MonadReader UzblClient m, MonadIO m) => String -> m ()
+debug s = do
+  d <- uzblDebug . uzblGlobal =.< ask
+  when d $ log s
+
 logPrint :: Show a => a -> UzblM ()
 logPrint = log . show
 
 run :: (MonadReader UzblClient m, MonadIO m) => String -> [String] -> m ()
 run c a = do
   let s = unwords $ c : map quote a
-  log $ "run " ++ s
+  debug $ "run " ++ s
   h <- uzblHandle =.< ask
   liftIO $ hPutStrLn h s
 
+runOthers :: String -> [String] -> UzblM ()
+runOthers r a = ask >>= \ct -> liftIO $
+  mapM_ (runReaderT $ run r a) . Map.elems . Map.delete (clientKey ct) =<< 
+    readMVar (uzblemClients (uzblGlobal ct))
+
 getVar :: Variable -> UzblM (Maybe Value)
 getVar var = Map.lookup var . uzblVariables =.< get
+
+getVarStr :: Variable -> UzblM String
+getVarStr var = maybe "" showValue =.< getVar var
+
+getVarInt :: Variable -> UzblM Int
+getVarInt var = do
+  v <- getVar var
+  return $ fromMaybe 0 $ vi =<< v
+  where
+    vi (ValInt i) = Just i
+    vi (ValStr s) = readMay s
+    vi (ValFloat f) = Just $ truncate f
 
 setVar :: Variable -> Value -> UzblM ()
 setVar var val = run ("set " ++ var ++ '=' : showValue val) []
@@ -139,17 +165,14 @@ toggleVar var vals = do
   setVar var (vals !! succ i)
 
 uzblURI :: UzblM String
-uzblURI = do
-  v <- getVar "uri"
-  return $ case v of 
-    Just (ValString s) -> s
-    _ -> ""
+uzblURI = getVarStr "uri"
 
 uri :: String -> UzblM ()
 uri u = run ("uri " ++ escape u) []
 
 newUzbl :: Maybe String -> UzblM ()
 newUzbl u = do
-  s <- uzblemSocket . uzblGlobal =.< ask
-  c <- uzblVariables =.< get
-  io $ runUzbl s c u
+  g <- uzblGlobal =.< ask
+  c <- io $ readMVar $ uzblCookies g
+  v <- uzblVariables =.< get
+  io $ runUzbl (uzblemSocket g) c v u

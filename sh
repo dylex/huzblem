@@ -7,6 +7,6 @@ run () {
 	echo "$*" >> "$UZBL_FIFO"
 }
 
-cmd=$1
-shift 2
+cmd=$1 ; shift
+[ $# -gt 0 ] && shift
 eval "$cmd"

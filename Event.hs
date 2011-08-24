@@ -1,10 +1,19 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Event
   ( event
   ) where
 
 import Prelude hiding (log)
 
+import Control.Concurrent.MVar
+import Control.Monad
+import Data.List
 import qualified Data.Map as Map
+import Data.Maybe
+import Numeric
+
+import Safe
+import Text.URI
 
 import Util
 import Config
@@ -40,20 +49,73 @@ newWindow :: [String] -> UzblM ()
 newWindow [u] = uri u
 newWindow _ = badArgs
 
+acceptCookie :: Cookie -> UzblM Bool
+acceptCookie c = do
+  cm <- getVarInt "cookie_mode"
+  case cm of
+    2 -> return True
+    1 -> do
+      u <- uzblURI -- should be new URI, possibly unknown
+      let dom = fromMaybe "" $ (uriRegName <=< parseURI) u
+      return $ cookieDomain c `isSuffixOf` dom || cookieDomain c == '.':dom
+    _ -> return False
+
 addCookie :: [String] -> UzblM ()
-addCookie = maybe badArgs ac . argCookie where
-  ac c = io $ print c
+addCookie args = maybe badArgs ac $ argCookie args where
+  ac c = do
+    ok <- acceptCookie c
+    if ok
+      then do
+        log "accepting"
+        io . (`modifyMVar_` return . cookieAdd c) . uzblCookies . uzblGlobal =<< ask
+        runOthers "add_cookie" args
+      else do
+        log "rejecting"
+        run "delete_cookie" args
+
+loadStart :: [String] -> UzblM ()
+loadStart [u] = do
+  variableSet ["uri","str",u] -- fake it here, since we don't get the event otherwise
+  setVar "status_load" $ ValStr "wait"
+loadStart _ = badArgs
+
+loadCommit :: [String] -> UzblM ()
+loadCommit [_] =
+  setVar "status_load" $ ValStr "recv"
+loadCommit _ = badArgs
+
+loadFinish :: [String] -> UzblM ()
+loadFinish [_] =
+  setVar "status_load" $ ValStr ""
+loadFinish _ = badArgs
+
+loadProgress :: [String] -> UzblM ()
+loadProgress [sp] 
+  | Just (p :: Int) <- readMay sp
+  , 0 <= p && p <= 100 =
+  setVar "status_load_color" $ ValStr $ '#' : sc (100-p) (sc p "00")
+  where
+    sh x 
+      | x < 16 = ('0':) . h
+      | otherwise = h
+      where h = showHex x
+    sc = sh . (`div`100) . (255*)
+loadProgress _ = badArgs
 
 events :: Map.Map Event EventHandler
 events = Map.fromAscList $ map (first Event) $ 
-  [ ("ADD_COOKIE",    addCookie)
-  , ("COMMAND_ERROR", commandError)
-  , ("FIFO_SET",      fifoSet)
-  , ("FORM_ACTIVE",   \_ -> rawMode)
-  , ("KEY_PRESS",     keyPress)
-  , ("NEW_WINDOW",    newWindow)
-  , ("SOCKET_SET",    socketSet) 
-  , ("VARIABLE_SET",  variableSet) 
+  [ ("ADD_COOKIE",	addCookie)
+  , ("COMMAND_ERROR",	commandError)
+  , ("FIFO_SET",	fifoSet)
+  , ("FORM_ACTIVE",	\_ -> rawMode)
+  , ("KEY_PRESS",	keyPress)
+  , ("LOAD_COMMIT",	loadCommit)
+  , ("LOAD_FINISH",	loadFinish)
+  , ("LOAD_PROGRESS",	loadProgress)
+  , ("LOAD_START",	loadStart)
+  , ("NEW_WINDOW",	newWindow)
+  , ("SOCKET_SET",	socketSet) 
+  , ("VARIABLE_SET",	variableSet) 
   ]
 
 event :: Event -> [String] -> UzblM ()

@@ -32,14 +32,16 @@ removeFile_ f = void $ tryJust (\e -> guard (isDoesNotExistError e) >. ()) $ rem
 data Options = Options
   { optionSocket :: FilePath
   , optionConfig :: FilePath
-  , optionElinksCookies :: Maybe FilePath
+  , optionCookies :: Maybe FilePath
+  , optionDebug :: Bool
   }
 
 defaultOptions :: Options
 defaultOptions = Options
   { optionSocket = uzblHome ".huzblem"
   , optionConfig = uzblHome "config"
-  , optionElinksCookies = Just $ home </> ".elinks/cookies"
+  , optionCookies = Just $ uzblHome "cookies" -- home </> ".elinks/cookies"
+  , optionDebug = False
   }
 
 options :: [GetOpt.OptDescr (Options -> Options)]
@@ -50,9 +52,12 @@ options =
   , GetOpt.Option "c" ["config"]
       (GetOpt.ReqArg (\s o -> o{ optionConfig = s }) "FILE") 
       ("Path to config file [" ++ optionConfig defaultOptions ++ "]")
-  , GetOpt.Option "e" ["elinks-cookies"]
-      (GetOpt.OptArg (\s o -> o{ optionElinksCookies = s }) "FILE") 
-      ("Load and use elinks cookies [" ++ fromMaybe "NONE" (optionElinksCookies defaultOptions) ++ "]")
+  , GetOpt.Option "" ["cookies"]
+      (GetOpt.OptArg (\s o -> o{ optionCookies = s }) "FILE") 
+      ("Load and use cookies from FILE [" ++ fromMaybe "NONE" (optionCookies defaultOptions) ++ "]")
+  , GetOpt.Option "d" ["debug"]
+      (GetOpt.NoArg (\o -> o{ optionDebug = True }))
+      ("Print out more log messages")
   ]
 
 main :: IO ()
@@ -61,28 +66,35 @@ main = do
   (opts, urls) <- case GetOpt.getOpt GetOpt.Permute options args of
     (o, a, []) -> return (foldl' (flip ($)) defaultOptions o, a)
     (_, _, err) -> do
-      mapM_ putStrLn err
+      mapM_ putStr err
+      putStr $ GetOpt.usageInfo "huzblem [OPTIONS] [URI ...]" options
       exitFailure
 
   s <- socket AF_UNIX Stream defaultProtocol
   let sock = optionSocket opts
       sa = SockAddrUnix sock
-      ifdne e = guard dne >. dne where dne = isDoesNotExistError e
+      ifdne e = guard (isDoesNotExistError e) >. ()
 
   me <- catchJust ifdne (do
       connect s sa
       sClose s
       putStrLn "huzblem already running"
       return False)
-    (\dne -> do
-      unless dne $ removeFile sock
+    (\() -> do
+      removeFile_ sock
       bindSocket s sa
       listen s (8+length args)
       return True)
 
+  cookies <- case optionCookies opts of
+    Nothing -> return emptyCookies
+    Just f 
+      | ".elinks/" `isInfixOf` f -> loadElinksCookies f
+      | otherwise -> loadCookies f
+
   let uu [] = [Nothing]
       uu l = map Just l
-  mapM_ (runUzbl sock defaultConfig) (uu urls)
+  mapM_ (runUzbl sock cookies defaultConfig) (uu urls)
 
   unless me exitSuccess
 
@@ -94,11 +106,12 @@ main = do
         when (i == 0) $ signalQSem wait
 
   clients <- newMVar Map.empty
-  cookies <- newMVar =<< maybe (return emptyCookies) loadElinksCookies (optionElinksCookies opts)
+  cookiev <- newMVar cookies
   let global = UzblGlobal
         { uzblemSocket = sock
         , uzblemClients = clients
-        , uzblCookies = cookies
+        , uzblCookies = cookiev
+        , uzblDebug = optionDebug opts
         }
 
   void $ forkIO $ forever $ accept s >>= \r -> do
@@ -144,11 +157,9 @@ proc c = do
         , ev:args <- quotedWords l = local (\ur -> ur{ uzblEvent = Just (Event ev, args) }) $
             if ev == "INSTANCE_EXIT"
               then log "finished" >. False
-              else log "" >> event (Event ev) args >. True
+              else debug "" >> event (Event ev) args >. True
         | otherwise = log s >. True
   log "starting"
-  cookies <- io . readMVar $ uzblCookies $ uzblGlobal c
-  mapM_ (run "add_cookie") $ cookiesArgs cookies
   defaultMode
   loop
 
