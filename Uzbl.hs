@@ -6,10 +6,9 @@ module Uzbl
   , UzblClient(..), clientKey
   , UzblState(..), emptyState
   , UzblM
-  , Key, Mod, ModKey
   , Prompt(..), Input
 
-  , ask, modify, get
+  , ask, modify, get, put
   , io
   , log, logPrint, debug
   , run, runOthers
@@ -28,7 +27,7 @@ import Control.Monad.State
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Word
+import qualified Data.Sequence as Seq
 import System.IO
 import System.Posix.Types (ProcessID)
 
@@ -36,6 +35,7 @@ import Safe
 
 import Util
 import Config
+import Keys
 import Cookies
 import URIs
 
@@ -69,16 +69,12 @@ type Clients = Map.Map ClientKey UzblClient
 clientKey :: UzblClient -> ClientKey
 clientKey = uzblPid
 
-type Key = String
-type Mod = Word
-type ModKey = (Mod, Key)
-
 type Input = ([Char],String) -- zipper
 
 data Prompt = Prompt
   { promptPrompt :: !String
   , promptInput :: !Input
-  , promptExec :: String -> UzblM ()
+  , promptExec :: Maybe String -> UzblM ()
   }
 
 data UzblState = UzblState
@@ -88,6 +84,7 @@ data UzblState = UzblState
   --uzblEvents :: Map.Map Event EventHandler
   , uzblBind :: ModKey -> UzblM ()
   , uzblPrompt :: Maybe Prompt
+  , uzblPromptHistory :: Seq.Seq String
   }
 
 emptyState :: UzblState
@@ -98,6 +95,7 @@ emptyState = UzblState
   --uzblEvents = Map.empty
   , uzblBind = const nop
   , uzblPrompt = Nothing
+  , uzblPromptHistory = Seq.empty
   }
 
 type UzblT m = ReaderT UzblClient (StateT UzblState m)

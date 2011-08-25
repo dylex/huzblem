@@ -17,6 +17,7 @@ import Text.URI
 
 import Util
 import Config
+import Keys
 import Uzbl
 import Bind
 import Cookies
