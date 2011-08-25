@@ -16,7 +16,7 @@ module Uzbl
   , getVar, getVarInt, getVarStr
   , setVar
   , resetVar, toggleVar, onOff
-  , uzblURI, uri
+  , uzblURI, goto
   , newUzbl
   ) where
 
@@ -37,6 +37,7 @@ import Safe
 import Util
 import Config
 import Cookies
+import URIs
 
 newtype Event = Event String deriving (Eq, Ord)
 
@@ -167,8 +168,8 @@ toggleVar var vals = do
 uzblURI :: UzblM String
 uzblURI = getVarStr "uri"
 
-uri :: String -> UzblM ()
-uri u = run ("uri " ++ escape u) []
+goto :: String -> UzblM ()
+goto u = run ("set uri=" ++ escape (expandURI u)) []
 
 newUzbl :: Maybe String -> UzblM ()
 newUzbl u = do

@@ -46,7 +46,7 @@ keyPress [md,key] = ($ (readModifiers md, key)) . uzblBind =<< get
 keyPress _ = badArgs
 
 newWindow :: [String] -> UzblM ()
-newWindow [u] = uri u
+newWindow [u] = goto u
 newWindow _ = badArgs
 
 acceptCookie :: Cookie -> UzblM Bool

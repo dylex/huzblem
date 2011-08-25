@@ -9,7 +9,7 @@ module Util
   , splitOn
   , quotedWord, quotedWords
   , escape, quote
-  , mlEscape, uriEscape
+  , mlEscape
 
   , capture, pipe
   ) where
@@ -78,13 +78,14 @@ quote = show
 escape :: String -> String
 escape [] = []
 escape (c:s)
-  | c `elem` "@" = '\\':s'
+  | c `elem` "@\\" = '\\':s'
   | otherwise = s'
   where s' = c:escape s
 
 mlEscape :: String -> String
 mlEscape "" = ""
 mlEscape ('@':s) = "\\@" ++ mlEscape s
+mlEscape ('\\':s) = "\\\\" ++ mlEscape s
 mlEscape ('&':s) = "&amp;" ++ mlEscape s
 mlEscape ('<':s) = "&lt;" ++ mlEscape s
 mlEscape ('>':s) = "&gt;" ++ mlEscape s
@@ -99,9 +100,6 @@ mlEscape (c:s)
     = "&#x" ++ showHex i (';' : mlEscape s)
   | otherwise = c : mlEscape s 
   where i = ord c
-
-uriEscape :: String -> String
-uriEscape _ = error "uriEscape: TODO"
 
 capture :: FilePath -> [String] -> IO (Maybe String)
 capture cmd args = do

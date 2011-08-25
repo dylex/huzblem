@@ -65,7 +65,7 @@ bindMap m d k = maybe (d k) id $ Map.lookup (mask modifierMask k) m
 
 
 pasteURI :: UzblM ()
-pasteURI = io (capture "xclip" ["-o"]) >>= maybe nop uri
+pasteURI = io (capture "xclip" ["-o"]) >>= maybe nop goto
 
 copyURI :: UzblM ()
 copyURI = io . pipe "xclip" [] =<< uzblURI
@@ -189,7 +189,7 @@ defaultBinds = Map.fromAscList
   , ((0, "K"),	        toggleVar "cookie_mode" $ map ValInt [0,1])
   , ((0, "L"),		run "search_reverse" [])
   , ((0, "Left"),       run "scroll" ["horizontal", '-':scrl])
-  , ((0, "O"),		uzblURI >>= \u -> prompt "uri " u uri)
+  , ((0, "O"),		uzblURI >>= \u -> prompt "uri " u goto)
   , ((0, "Page_Down"),	run "scroll" ["vertical", "100%"])
   , ((0, "Page_Up"),	run "scroll" ["vertical", "-100%"])
   , ((0, "Q"),	        run "exit" [])
@@ -205,7 +205,7 @@ defaultBinds = Map.fromAscList
   , ((0, "i"),		rawMode)
   , ((0, "l"),		run "search" [])
   , ((0, "n"),		run "scroll" ["vertical", '-':scrl])
-  , ((0, "o"),		prompt "uri " "" uri)
+  , ((0, "o"),		prompt "uri " "" goto)
   , ((0, "p"),          pasteURI)
   , ((0, "r"),		run "reload" [])
   , ((0, "s"),		run "scroll" ["horizontal", scrl])
