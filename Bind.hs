@@ -5,7 +5,6 @@ module Bind
 
 import Prelude hiding (log)
 
-import Control.Concurrent.MVar
 import Control.Monad
 import qualified Data.Map as Map
 
@@ -44,8 +43,7 @@ search :: Bool -> String -> UzblM ()
 search rev s = run ("search" ++ (if rev then "_reverse" else "") ++ ' ' : escape s) []
 
 cookieSave :: UzblM ()
-cookieSave = ask >>= io . 
-  (saveCookies (uzblHome "cookies.save") <=< readMVar . uzblCookies . uzblGlobal)
+cookieSave = io . saveCookies (uzblHome "cookies.save") . uzblCookies =<< get
 
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
 prompt p i e = Prompt.prompt p i ((>>) defaultMode . maybe nop e)

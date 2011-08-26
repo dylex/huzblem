@@ -106,11 +106,10 @@ main = do
         when (i == 0) $ signalQSem wait
 
   clients <- newMVar Map.empty
-  cookiev <- newMVar cookies
   let global = UzblGlobal
         { uzblemSocket = sock
         , uzblemClients = clients
-        , uzblCookies = cookiev
+        , uzblemCookies = cookies
         , uzblDebug = optionDebug opts
         }
 
@@ -144,7 +143,9 @@ client global (s,_) = do
         bracket_ 
           (ucl $ return . Map.insert (clientKey c) c)
           (ucl $ return . Map.update (\c' -> guard (on (/=) uzblThread c c') >. c') (clientKey c))
-          (evalStateT (runReaderT (proc c) c) emptyState)
+          (evalStateT (runReaderT (proc c) c) emptyState{
+              uzblCookies = uzblemCookies global
+            })
     _ -> putStrLn $ "huzblem: bad start: " ++ l
 
 proc :: UzblClient -> UzblM ()

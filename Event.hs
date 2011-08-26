@@ -5,7 +5,6 @@ module Event
 
 import Prelude hiding (log)
 
-import Control.Concurrent.MVar
 import Control.Monad
 import Data.List
 import qualified Data.Map as Map
@@ -31,7 +30,7 @@ commandError _ = badArgs
 
 variableSet :: [String] -> UzblM ()
 variableSet [var,typ,sval] | Just val <- readValue typ sval =
-  modify $ \u -> u { uzblVariables = Map.insert var val (uzblVariables u) }
+  modify $ \u -> u{ uzblVariables = Map.insert var val (uzblVariables u) }
 variableSet _ = badArgs
 
 fifoSet :: [String] -> UzblM ()
@@ -68,8 +67,7 @@ addCookie args = maybe badArgs ac $ argCookie args where
     if ok
       then do
         log "accepting"
-        io . (`modifyMVar_` return . cookieAdd c) . uzblCookies . uzblGlobal =<< ask
-        runOthers "add_cookie" args
+        modify $ \u -> u{ uzblCookies = cookieAdd c (uzblCookies u) }
       else do
         log "rejecting"
         run "delete_cookie" args
@@ -103,7 +101,7 @@ loadProgress [sp]
     sc = sh . (`div`100) . (255*)
 loadProgress _ = badArgs
 
-events :: Map.Map Event EventHandler
+events :: Map.Map Event ([String] -> UzblM ())
 events = Map.fromAscList $ map (first Event) $ 
   [ ("ADD_COOKIE",	addCookie)
   , ("COMMAND_ERROR",	commandError)

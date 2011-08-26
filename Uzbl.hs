@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Uzbl
   ( Event(..)
-  , EventHandler
   , UzblGlobal(..)
   , UzblClient(..), clientKey
   , UzblState(..), emptyState
@@ -45,12 +44,21 @@ instance Show Event where
   showsPrec _ (Event e) = showString e
   show (Event e) = e
 
-type EventHandler = [String] -> UzblM ()
+type ClientKey = ProcessID
+type Clients = Map.Map ClientKey UzblClient
+
+type Input = ([Char],String) -- zipper
+
+data Prompt = Prompt
+  { promptPrompt :: !String
+  , promptInput :: !Input
+  , promptExec :: Maybe String -> UzblM ()
+  }
 
 data UzblGlobal = UzblGlobal
   { uzblemSocket :: !FilePath
   , uzblemClients :: MVar Clients
-  , uzblCookies :: MVar Cookies
+  , uzblemCookies :: Cookies
   , uzblDebug :: Bool
   }
 
@@ -63,39 +71,14 @@ data UzblClient = UzblClient
   , uzblEvent :: Maybe (Event, [String])
   }
 
-type ClientKey = ProcessID
-type Clients = Map.Map ClientKey UzblClient
-
-clientKey :: UzblClient -> ClientKey
-clientKey = uzblPid
-
-type Input = ([Char],String) -- zipper
-
-data Prompt = Prompt
-  { promptPrompt :: !String
-  , promptInput :: !Input
-  , promptExec :: Maybe String -> UzblM ()
-  }
-
 data UzblState = UzblState
   { uzblFIFO :: Maybe FilePath
   , uzblSocket :: Maybe FilePath
   , uzblVariables :: Config
-  --uzblEvents :: Map.Map Event EventHandler
+  , uzblCookies :: Cookies
   , uzblBind :: ModKey -> UzblM ()
   , uzblPrompt :: Maybe Prompt
   , uzblPromptHistory :: Seq.Seq String
-  }
-
-emptyState :: UzblState
-emptyState = UzblState
-  { uzblFIFO = Nothing
-  , uzblSocket = Nothing
-  , uzblVariables = Map.empty
-  --uzblEvents = Map.empty
-  , uzblBind = const nop
-  , uzblPrompt = Nothing
-  , uzblPromptHistory = Seq.empty
   }
 
 type UzblT m = ReaderT UzblClient (StateT UzblState m)
@@ -103,6 +86,21 @@ type UzblM = UzblT IO
 
 io :: IO a -> UzblM a
 io = liftIO
+
+emptyState :: UzblState
+emptyState = UzblState
+  { uzblFIFO = Nothing
+  , uzblSocket = Nothing
+  , uzblVariables = Map.empty
+  --uzblEvents = Map.empty
+  , uzblCookies = emptyCookies
+  , uzblBind = const nop
+  , uzblPrompt = Nothing
+  , uzblPromptHistory = Seq.empty
+  }
+
+clientKey :: UzblClient -> ClientKey
+clientKey = uzblPid
 
 log :: (MonadReader UzblClient m, MonadIO m) => String -> m ()
 log s = do
@@ -170,8 +168,11 @@ goto :: String -> UzblM ()
 goto u = run ("set uri=" ++ escape (expandURI u)) []
 
 newUzbl :: Maybe String -> UzblM ()
-newUzbl u = do
-  g <- uzblGlobal =.< ask
-  c <- io $ readMVar $ uzblCookies g
-  v <- uzblVariables =.< get
-  io $ runUzbl (uzblemSocket g) c v u
+newUzbl uri = do
+  c <- ask
+  u <- get
+  io $ runUzbl 
+    (uzblemSocket $ uzblGlobal c) 
+    (uzblCookies u) 
+    (Map.insert "parent" (ValInt $ fromIntegral $ clientKey c) $ uzblVariables u) 
+    uri
