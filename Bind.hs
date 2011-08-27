@@ -43,7 +43,9 @@ search :: Bool -> String -> UzblM ()
 search rev s = run ("search" ++ (if rev then "_reverse" else "") ++ ' ' : escape s) []
 
 cookieSave :: UzblM ()
-cookieSave = io . saveCookies (uzblHome "cookies.save") . uzblCookies =<< get
+cookieSave = do
+  io . saveCookies (uzblHome "cookies.save") . uzblCookies =<< get
+  status "cookies saved"
 
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
 prompt p i e = Prompt.prompt p i ((>>) defaultMode . maybe nop e)

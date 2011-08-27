@@ -1,0 +1,9 @@
+A haskell event manager for uzbl, in progress.
+
+Almost all the configuration is hard-coded (kinda like xmonad), so you'll have
+to do a lot of editing of haskell if you wanted to make this do what you want.
+Of course, if you're interested in such a thing, you're probably just looking
+for a template to get started with anyway, in which case this should do you
+fine.
+
+It also relies on some features in my uzbl fork (but not many).
