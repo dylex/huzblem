@@ -71,7 +71,7 @@ addCookie args = maybe badArgs ac $ argCookie args where
         modify $ \u -> u{ uzblCookies = cookieAdd c (uzblCookies u) }
       else do
         log "rejecting"
-        run "delete_cookie" args
+        runArgs "delete_cookie" args
 
 loadStart :: [String] -> UzblM ()
 loadStart [u] = do

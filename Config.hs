@@ -76,7 +76,7 @@ baseConfig = Map.fromAscList
   , ("forward_keys",		ValInt 0)
   , ("socket_dir",		ValStr $ uzblHome "")
   , ("status_background",	ValStr "#AAA")
-  , ("status_format",		ValStr "\\@status_message<span color='#440'>\\@[\\@SELECTED_URI]\\@</span>")
+  , ("status_format",		ValStr "<span bgcolor='#8CC' color='#000'>\\@command_count</span>\\@status_message<span color='#440'>\\@[\\@SELECTED_URI]\\@</span>")
   , ("status_format_right",	ValStr "<span color='#FFF' bgcolor='\\@status_load_color'>\\@status_load</span> <span color='#08F'>\\@[\\@uri]\\@</span>")
   , ("status_load",		ValStr "")
   , ("status_load_color",	ValStr "#000")

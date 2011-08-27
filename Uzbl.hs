@@ -10,9 +10,9 @@ module Uzbl
   , ask, modify, get, put
   , io
   , log, logPrint, debug
-  , run, runOthers
+  , run, runArgs, runOthers
   , getVar, getVarInt, getVarStr
-  , setVar
+  , setVar, setVarMsg
   , resetVar, toggleVar, onOff
   , uzblURI, goto
   , status
@@ -53,6 +53,8 @@ type Input = ([Char],String) -- zipper
 
 data Bindings
   = Command
+    { commandCount :: Maybe Int
+    }
   | PassThrough
     { bindingsReturn :: Bindings 
     }
@@ -103,6 +105,8 @@ emptyState = UzblState
   --uzblEvents = Map.empty
   , uzblCookies = emptyCookies
   , uzblBindings = Command
+    { commandCount = Nothing
+    }
   , uzblPromptHistory = Seq.empty
   }
 
@@ -126,16 +130,18 @@ debug s = do
 logPrint :: Show a => a -> UzblM ()
 logPrint = log . show
 
-run :: (MonadReader UzblClient m, MonadIO m) => String -> [String] -> m ()
-run c a = do
-  let s = unwords $ c : map quote a
+run :: (MonadReader UzblClient m, MonadIO m) => String -> m ()
+run s = do
   debug $ "run " ++ s
   h <- uzblHandle =.< ask
   liftIO $ hPutStrLn h s
 
+runArgs :: (MonadReader UzblClient m, MonadIO m) => String -> [String] -> m ()
+runArgs c a = run $ unwords $ c : map quote a
+
 runOthers :: String -> [String] -> UzblM ()
 runOthers r a = ask >>= \ct -> liftIO $
-  mapM_ (runReaderT $ run r a) . Map.elems . Map.delete (clientKey ct) =<< 
+  mapM_ (runReaderT $ runArgs r a) . Map.elems . Map.delete (clientKey ct) =<< 
     readMVar (uzblemClients (uzblGlobal ct))
 
 getVar :: Variable -> UzblM (Maybe Value)
@@ -154,7 +160,13 @@ getVarInt var = do
     vi (ValFloat f) = Just $ truncate f
 
 setVar :: Variable -> Value -> UzblM ()
-setVar var val = run ("set " ++ var ++ '=' : showValue val) []
+setVar var val = run $ "set " ++ var ++ '=' : showValue val
+
+setVarMsg :: Variable -> Value -> UzblM ()
+setVarMsg var val = do
+  status c
+  run $ "set " ++ c
+  where c = var ++ '=' : showValue val
 
 resetVar :: Variable -> UzblM ()
 resetVar var = maybe nop (setVar var) $ Map.lookup var defaultConfig
@@ -166,14 +178,13 @@ toggleVar :: Variable -> [Value] -> UzblM ()
 toggleVar var vals = do
   x <- getVar var
   let y = (!!) vals $ succ $ fromMaybe (-1) $ (`elemIndex` init vals) =<< x
-  status $ var ++ "=" ++ showValue y
-  setVar var y
+  setVarMsg var y
 
 uzblURI :: UzblM String
 uzblURI = getVarStr "uri"
 
 goto :: String -> UzblM ()
-goto u = run ("set uri=" ++ escape (expandURI u)) []
+goto u = run $ "set uri=" ++ escape (expandURI u)
 
 status :: String -> UzblM ()
 status "" = setVar "status_message" $ ValStr ""
