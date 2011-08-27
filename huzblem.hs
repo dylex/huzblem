@@ -25,6 +25,7 @@ import Uzbl
 import Bind
 import Event
 import Cookies
+import Database
 
 removeFile_ :: FilePath -> IO ()
 removeFile_ f = void $ tryJust (\e -> guard (isDoesNotExistError e) >. ()) $ removeFile f
@@ -106,10 +107,12 @@ main = do
         when (i == 0) $ signalQSem wait
 
   clients <- newMVar Map.empty
+  db <- databaseOpen
   let global = UzblGlobal
         { uzblemSocket = sock
         , uzblemClients = clients
         , uzblemCookies = cookies
+        , uzblDatabase = db
         , uzblDebug = optionDebug opts
         }
 
@@ -120,6 +123,7 @@ main = do
     down
   waitQSem wait
   removeFile_ sock
+  databaseClose db
 
 client :: UzblGlobal -> (Socket, SockAddr) -> IO ()
 client global (s,_) = do

@@ -20,6 +20,7 @@ import Keys
 import Uzbl
 import Bind
 import Cookies
+import Database
 
 badArgs :: UzblM ()
 badArgs = log "unknown arguments"
@@ -84,8 +85,9 @@ loadCommit [_] =
 loadCommit _ = badArgs
 
 loadFinish :: [String] -> UzblM ()
-loadFinish [_] =
+loadFinish [u] = do
   setVar "status_load" $ ValStr ""
+  io . browseAdd u . uzblDatabase . uzblGlobal =<< ask
 loadFinish _ = badArgs
 
 loadProgress :: [String] -> UzblM ()
@@ -101,6 +103,13 @@ loadProgress [sp]
     sc = sh . (`div`100) . (255*)
 loadProgress _ = badArgs
 
+linkHover :: [String] -> UzblM ()
+linkHover [u] = setVar "link_hovering" $ ValStr u
+linkHover _ = badArgs
+
+linkUnHover :: [String] -> UzblM ()
+linkUnHover _ = setVar "link_hovering" $ ValStr ""
+
 events :: Map.Map Event ([String] -> UzblM ())
 events = Map.fromAscList $ map (first Event) $ 
   [ ("ADD_COOKIE",	addCookie)
@@ -108,6 +117,8 @@ events = Map.fromAscList $ map (first Event) $
   , ("FIFO_SET",	fifoSet)
   , ("FORM_ACTIVE",	\_ -> rawMode)
   , ("KEY_PRESS",	keyPress)
+  , ("LINK_HOVER",	linkHover)
+  , ("LINK_UNHOVER",	linkUnHover)
   , ("LOAD_COMMIT",	loadCommit)
   , ("LOAD_FINISH",	loadFinish)
   , ("LOAD_PROGRESS",	loadProgress)

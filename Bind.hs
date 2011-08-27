@@ -48,6 +48,11 @@ cookieSave = io . saveCookies (uzblHome "cookies.save") . uzblCookies =<< get
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
 prompt p i e = Prompt.prompt p i ((>>) defaultMode . maybe nop e)
 
+button2 :: UzblM ()
+button2 = do
+  l <- getVarStr "link_hovering"
+  unless (null l) $ newUzbl $ Just l
+
 defaultBinds :: Map.Map ModKey (UzblM ())
 defaultBinds = Map.fromAscList 
   [ ((0, "$"),	        run "scroll" ["horizontal", "end"])
@@ -61,8 +66,10 @@ defaultBinds = Map.fromAscList
   , ((0, "?"),          prompt "?" "" $ search True)
   , ((0, "@"),		toggleVar "caret_browsing" onOff)
   , ((0, "B"),	        setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
+  , ((0, "Button2"),	button2)
   , ((0, "Down"),	run "scroll" ["vertical", scrl])
   , ((0, "End"),	run "scroll" ["vertical", "end"])
+  , ((0, "Escape"),	defaultMode)
   , ((0, "G"),	        run "scroll" ["vertical", "end"])
   , ((0, "Home"),	run "scroll" ["vertical", "begin"])
   , ((0, "K"),	        toggleVar "cookie_mode" $ map ValInt [0,1])
@@ -102,4 +109,6 @@ defaultBind :: ModKey -> UzblM ()
 defaultBind = bindMap defaultBinds (\_ -> log "no binding")
 
 defaultMode :: UzblM ()
-defaultMode = modify $ \u -> u{ uzblBind = defaultBind }
+defaultMode = do
+  status ""
+  modify $ \u -> u{ uzblBind = defaultBind }

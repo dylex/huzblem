@@ -15,6 +15,7 @@ module Uzbl
   , setVar
   , resetVar, toggleVar, onOff
   , uzblURI, goto
+  , status
   , newUzbl
   ) where
 
@@ -35,6 +36,7 @@ import Safe
 import Util
 import Config
 import Keys
+import Database
 import Cookies
 import URIs
 
@@ -52,6 +54,7 @@ type Input = ([Char],String) -- zipper
 data Prompt = Prompt
   { promptPrompt :: !String
   , promptInput :: !Input
+  , promptCompletions :: Maybe (String -> UzblM [String])
   , promptExec :: Maybe String -> UzblM ()
   }
 
@@ -59,6 +62,7 @@ data UzblGlobal = UzblGlobal
   { uzblemSocket :: !FilePath
   , uzblemClients :: MVar Clients
   , uzblemCookies :: Cookies
+  , uzblDatabase :: Database
   , uzblDebug :: Bool
   }
 
@@ -158,14 +162,19 @@ onOff = [ValInt 1, ValInt 0]
 toggleVar :: Variable -> [Value] -> UzblM ()
 toggleVar var vals = do
   x <- getVar var
-  let i = fromMaybe (-1) $ (`elemIndex` init vals) =<< x
-  setVar var (vals !! succ i)
+  let y = (!!) vals $ succ $ fromMaybe (-1) $ (`elemIndex` init vals) =<< x
+  status $ var ++ "=" ++ showValue y
+  setVar var y
 
 uzblURI :: UzblM String
 uzblURI = getVarStr "uri"
 
 goto :: String -> UzblM ()
 goto u = run ("set uri=" ++ escape (expandURI u)) []
+
+status :: String -> UzblM ()
+status "" = setVar "status_message" $ ValStr ""
+status x = setVar "status_message" $ ValStr $ "<span color='#404'>" ++ mlEscape x ++ "</span> "
 
 newUzbl :: Maybe String -> UzblM ()
 newUzbl uri = do

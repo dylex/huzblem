@@ -3,6 +3,7 @@ module Prompt
   ) where
 
 import Data.Char
+import Data.List
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
 import Data.Tuple
@@ -73,6 +74,17 @@ historyDown u@UzblState{ uzblPrompt = Just p }
      } where i = input (promptInput p)
 historyDown u = u
 
+historyFind :: Bool -> UzblState -> UzblState
+historyFind dir u@UzblState
+  { uzblPrompt = Just p@Prompt{ promptInput = (il,_) }
+  , uzblPromptHistory = h } 
+  | Just n <- (if dir then Seq.findIndexL else Seq.findIndexR) (reverse il `isPrefixOf`) h
+  , (l,i Seq.:< r) <- second Seq.viewl $ Seq.splitAt n h =
+    u{ uzblPrompt = Just p{ promptInput = (il,drop (length il) i) }
+     , uzblPromptHistory = r Seq.>< l
+     }
+historyFind _ u = u
+
 promptBinds :: Map.Map ModKey (UzblM ())
 promptBinds = Map.fromAscList 
   [ ((0, "BackSpace"),  modifyInput $ first tailSafe)
@@ -86,12 +98,14 @@ promptBinds = Map.fromAscList
   , ((0, "Right"),      modifyInput inputRight)
   , ((0, "Up"),         modify historyUp)
   , ((0, "space"),      promptInsert " ")
+  , ((modCtrl, "n"),    modify $ historyFind True)
+  , ((modCtrl, "t"),    modify $ historyFind False)
   , ((modCtrl, "u"),    modifyInput $ const ("",""))
   , ((modCtrl, "w"),    modifyInput $ \(il,ir) -> (tailSafe $ dropWhile (not . isSpace) il,ir))
   ]
 
 setPrompt :: String -> UzblM ()
-setPrompt = setVar "status_prompt" . ValStr
+setPrompt = setVar "status_message" . ValStr
 
 promptUpdate :: UzblM ()
 promptUpdate =
@@ -118,5 +132,6 @@ prompt :: String -> String -> (Maybe String -> UzblM ()) -> UzblM ()
 prompt p i e = promptMode $ Prompt
   { promptPrompt = p
   , promptInput = unInput i
+  , promptCompletions = Nothing
   , promptExec = e
   }

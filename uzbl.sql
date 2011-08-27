@@ -1,0 +1,36 @@
+CREATE TABLE uzbl.mark (
+	id	INTEGER PRIMARY KEY,
+	uri	TEXT UNIQUE NOT NULL,
+	created	TIMESTAMP (0) NOT NULL DEFAULT now(),
+	alias	TEXT UNIQUE
+);
+
+CREATE TABLE uzbl.browse (
+	id	SERIAL PRIMARY KEY,
+	uri	TEXT UNIQUE NOT NULL,
+	last	TIMESTAMP (0) NOT NULL DEFAULT now(),
+	visits	INTEGER NOT NULL DEFAULT 1,
+	-- mark	INTEGER REFERENCES mark ON DELETE SET NULL
+);
+-- CREATE INDEX browse_mark ON browse (mark) WHERE mark IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION uzbl.browse_add(TEXT) RETURNS INTEGER LANGUAGE plpgsql STRICT AS
+$$
+DECLARE
+	u ALIAS FOR $1;
+	i INTEGER;
+BEGIN
+	LOOP
+		UPDATE browse SET visits = visits + 1, last = now() WHERE uri = u RETURNING id INTO i;
+		IF NOT found THEN
+			BEGIN
+				INSERT INTO browse (uri) VALUES (u) RETURNING id INTO i;
+			EXCEPTION WHEN unique_violation THEN
+				CONTINUE;
+			END;
+		END IF;
+		RETURN i;
+	END LOOP;
+END;
+$$
+;
