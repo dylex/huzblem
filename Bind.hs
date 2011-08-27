@@ -1,6 +1,7 @@
 module Bind 
-  ( defaultMode
+  ( commandMode
   , rawMode
+  , runBind
   ) where
 
 import Prelude hiding (log)
@@ -13,7 +14,7 @@ import Config
 import Uzbl
 import Keys
 import Cookies
-import qualified Prompt
+import Prompt
 
 pasteURI :: UzblM ()
 pasteURI = io (capture "xclip" ["-o"]) >>= maybe nop goto
@@ -24,18 +25,18 @@ copyURI = io . pipe "xclip" [] =<< uzblURI
 scrl :: String
 scrl = "20"
 
-rawBind :: (ModKey -> UzblM ()) -> ModKey -> UzblM ()
-rawBind defbind (0, "Escape") = do
-  modify $ \u -> u{ uzblBind = defbind }
+rawBind :: ModKey -> UzblM ()
+rawBind (0, "Escape") = do
+  modifyBindings bindingsReturn
   setVar "forward_keys" $ ValInt 0
   resetVar "status_background"
-rawBind _ _ = nop
+rawBind _ = nop
 
 rawMode :: UzblM ()
 rawMode = do
   f <- getVar "forward_keys"
   when (f /= Just (ValInt 1)) $ do
-    modify $ \u -> u{ uzblBind = rawBind (uzblBind u) }   
+    modifyBindings PassThrough
     setVar "forward_keys" $ ValInt 1
     setVar "status_background" $ ValStr "#000"
 
@@ -48,15 +49,15 @@ cookieSave = do
   status "cookies saved"
 
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
-prompt p i e = Prompt.prompt p i ((>>) defaultMode . maybe nop e)
+prompt p i e = promptMode p i ((>>) commandMode . maybe nop e)
 
 button2 :: UzblM ()
 button2 = do
   l <- getVarStr "link_hovering"
   unless (null l) $ newUzbl $ Just l
 
-defaultBinds :: Map.Map ModKey (UzblM ())
-defaultBinds = Map.fromAscList 
+commandBinds :: Map.Map ModKey (UzblM ())
+commandBinds = Map.fromAscList 
   [ ((0, "$"),	        run "scroll" ["horizontal", "end"])
   , ((0, "%"),	        toggleVar "disable_scripts" onOff)
   , ((0, "&"),	        toggleVar "stylesheet_uri" stylesheets)
@@ -67,11 +68,10 @@ defaultBinds = Map.fromAscList
   , ((0, "="),		setVar "zoom_level" (ValFloat 1))
   , ((0, "?"),          prompt "?" "" $ search True)
   , ((0, "@"),		toggleVar "caret_browsing" onOff)
-  , ((0, "B"),	        setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
   , ((0, "Button2"),	button2)
   , ((0, "Down"),	run "scroll" ["vertical", scrl])
   , ((0, "End"),	run "scroll" ["vertical", "end"])
-  , ((0, "Escape"),	defaultMode)
+  , ((0, "Escape"),	commandMode)
   , ((0, "G"),	        run "scroll" ["vertical", "end"])
   , ((0, "Home"),	run "scroll" ["vertical", "begin"])
   , ((0, "K"),	        toggleVar "cookie_mode" $ map ValInt [0,1])
@@ -105,12 +105,19 @@ defaultBinds = Map.fromAscList
   , ((0, "z"),		run "stop" [])
   , ((0, "{"),	        toggleVar "enable_spellcheck" onOff)
   , ((modCtrl, "k"),	cookieSave)
+  , ((modMod1, "m"),    goto "~/.mozilla/bookmarks.html")
+  , ((modMod1, "x"),    setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
   ]
 
-defaultBind :: ModKey -> UzblM ()
-defaultBind = bindMap defaultBinds (\_ -> log "no binding")
+commandBind :: ModKey -> UzblM ()
+commandBind = bindMap commandBinds (\_ -> log "no binding")
 
-defaultMode :: UzblM ()
-defaultMode = do
+commandMode :: UzblM ()
+commandMode = do
   status ""
-  modify $ \u -> u{ uzblBind = defaultBind }
+  modifyBindings (const Command)
+
+runBind :: Bindings -> ModKey -> UzblM ()
+runBind Command{} = commandBind
+runBind PassThrough{} = rawBind
+runBind Prompt{} = promptBind

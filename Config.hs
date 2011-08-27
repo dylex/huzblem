@@ -93,7 +93,7 @@ defaultConfig = Map.union (Map.fromAscList
   , ("disable_plugins",		ValInt 1)
   , ("disable_scripts",		ValInt 0)
   , ("enable_spellcheck",	ValInt 0)
-  , ("shell_cmd",		ValStr $ uzblHome "sh")
+  , ("shell_cmd",		ValStr $ uzblHome "shell")
   , ("show_status",		ValInt 1)
   , ("status_top",		ValInt 0)
   , ("stylesheet_uri",		head stylesheets)

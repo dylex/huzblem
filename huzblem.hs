@@ -22,7 +22,6 @@ import System.IO.Error
 import Util
 import Config
 import Uzbl
-import Bind
 import Event
 import Cookies
 import Database
@@ -165,6 +164,5 @@ proc c = do
               else debug "" >> event (Event ev) args >. True
         | otherwise = log s >. True
   log "starting"
-  defaultMode
   loop
 

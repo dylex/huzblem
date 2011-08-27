@@ -1,5 +1,6 @@
 module Prompt
-  ( prompt
+  ( promptMode
+  , promptBind
   ) where
 
 import Data.Char
@@ -26,19 +27,18 @@ unInput s = (reverse s, "")
 
 promptStop :: UzblM ()
 promptStop = do
-  u@UzblState{ uzblPrompt = Just p } <- get
-  put u{ uzblPrompt = Nothing }
+  UzblState{ uzblBindings = p } <- get
   promptExec p Nothing
 
 promptRun :: UzblM ()
 promptRun = do
-  u@UzblState{ uzblPrompt = Just p } <- get
+  u@UzblState{ uzblBindings = p } <- get
   let s = input (promptInput p)
-  put $ historyPush s u{ uzblPrompt = Nothing }
+  put $ historyPush s u
   promptExec p $ Just s
 
-modifyPrompt :: (Prompt -> Prompt) -> UzblM ()
-modifyPrompt f = modify $ \u -> u{ uzblPrompt = fmap f $ uzblPrompt u }
+modifyPrompt :: (Bindings -> Bindings) -> UzblM ()
+modifyPrompt = modifyBindings
 
 modifyInput :: ((String,String) -> (String,String)) -> UzblM ()
 modifyInput f = modifyPrompt $ \p -> p{ promptInput = f $ promptInput p }
@@ -59,28 +59,28 @@ historyPush x u = u{ uzblPromptHistory =
     x Seq.<| Seq.take historyLength (uzblPromptHistory u) }
 
 historyUp :: UzblState -> UzblState
-historyUp u@UzblState{ uzblPrompt = Just p }
+historyUp u@UzblState{ uzblBindings = p }
   | n Seq.:< r <- Seq.viewl (uzblPromptHistory u) = 
-    u{ uzblPrompt = Just p{ promptInput = unInput n }
+    u{ uzblBindings = p{ promptInput = unInput n }
      , uzblPromptHistory = if null i then r else r Seq.|> i
      } where i = input (promptInput p)
 historyUp u = u
 
 historyDown :: UzblState -> UzblState
-historyDown u@UzblState{ uzblPrompt = Just p }
+historyDown u@UzblState{ uzblBindings = p }
   | r Seq.:> n <- Seq.viewr (uzblPromptHistory u) = 
-    u{ uzblPrompt = Just p{ promptInput = unInput n }
+    u{ uzblBindings = p{ promptInput = unInput n }
      , uzblPromptHistory = if null i then r else i Seq.<| r
      } where i = input (promptInput p)
 historyDown u = u
 
 historyFind :: Bool -> UzblState -> UzblState
 historyFind dir u@UzblState
-  { uzblPrompt = Just p@Prompt{ promptInput = (il,_) }
+  { uzblBindings = p@Prompt{ promptInput = (il,_) }
   , uzblPromptHistory = h } 
   | Just n <- (if dir then Seq.findIndexL else Seq.findIndexR) (reverse il `isPrefixOf`) h
   , (l,i Seq.:< r) <- second Seq.viewl $ Seq.splitAt n h =
-    u{ uzblPrompt = Just p{ promptInput = (il,drop (length il) i) }
+    u{ uzblBindings = p{ promptInput = (il,drop (length il) i) }
      , uzblPromptHistory = r Seq.>< l
      }
 historyFind _ u = u
@@ -108,30 +108,23 @@ setPrompt :: String -> UzblM ()
 setPrompt = setVar "status_message" . ValStr
 
 promptUpdate :: UzblM ()
-promptUpdate =
-  maybe (setPrompt "") (\Prompt{ promptPrompt = p, promptInput = (il,ir) } ->
-    setPrompt $ "<span bgcolor='#000'>" ++ p ++ "<span face='monospace'>" 
-      ++ mlEscape (reverse il) ++ "<span face='sans'>|</span>" ++ mlEscape ir 
-      ++ "</span></span>"
-    ) . uzblPrompt =<< get
+promptUpdate = do
+  Prompt{ promptPrompt = p, promptInput = (il,ir) } <- uzblBindings =.< get
+  setPrompt $ "<span bgcolor='#000'>" ++ p ++ "<span face='monospace'>" 
+    ++ mlEscape (reverse il) ++ "<span face='sans'>|</span>" ++ mlEscape ir 
+    ++ "</span></span>"
 
 promptBind :: ModKey -> UzblM ()
 promptBind mk = do
   bindMap promptBinds (promptInsert . snd) mk
   promptUpdate
 
-promptMode :: Prompt -> UzblM ()
-promptMode p = do
-  modify $ \u -> u
-    { uzblBind = promptBind
-    , uzblPrompt = Just p
-    }   
+promptMode :: String -> String -> (Maybe String -> UzblM ()) -> UzblM ()
+promptMode p i e = do
+  modifyBindings $ const $ Prompt
+    { promptPrompt = p
+    , promptInput = unInput i
+    , promptCompletions = Nothing
+    , promptExec = e
+    }
   promptUpdate
-
-prompt :: String -> String -> (Maybe String -> UzblM ()) -> UzblM ()
-prompt p i e = promptMode $ Prompt
-  { promptPrompt = p
-  , promptInput = unInput i
-  , promptCompletions = Nothing
-  , promptExec = e
-  }

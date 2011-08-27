@@ -1,7 +1,7 @@
 module Keys 
   ( Key, Mod, ModKey
   , readModifiers
-  , modCtrl, modMod4
+  , modCtrl, modMod1, modMod4
   , bindMap
   ) where
 
@@ -45,9 +45,9 @@ modifiers = foldl' (\i -> maybe i (setBit i) . modifierIndex) 0
 readModifiers :: String -> Mod
 readModifiers = modifiers . splitOn ('|'==) 
 
-modCtrl, _modMod1, modMod4 :: Mod
+modCtrl, modMod1, modMod4 :: Mod
 modCtrl = modifier "Ctrl"
-_modMod1 = modifier "Mod1"
+modMod1 = modifier "Mod1"
 modMod4 = modifier "Mod4"
 
 modifierMask :: Mod

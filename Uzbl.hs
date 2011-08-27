@@ -5,7 +5,7 @@ module Uzbl
   , UzblClient(..), clientKey
   , UzblState(..), emptyState
   , UzblM
-  , Prompt(..), Input
+  , Bindings(..), Input
 
   , ask, modify, get, put
   , io
@@ -16,6 +16,7 @@ module Uzbl
   , resetVar, toggleVar, onOff
   , uzblURI, goto
   , status
+  , modifyBindings
   , newUzbl
   ) where
 
@@ -35,7 +36,6 @@ import Safe
 
 import Util
 import Config
-import Keys
 import Database
 import Cookies
 import URIs
@@ -51,12 +51,17 @@ type Clients = Map.Map ClientKey UzblClient
 
 type Input = ([Char],String) -- zipper
 
-data Prompt = Prompt
-  { promptPrompt :: !String
-  , promptInput :: !Input
-  , promptCompletions :: Maybe (String -> UzblM [String])
-  , promptExec :: Maybe String -> UzblM ()
-  }
+data Bindings
+  = Command
+  | PassThrough
+    { bindingsReturn :: Bindings 
+    }
+  | Prompt 
+    { promptPrompt :: !String
+    , promptInput :: !Input
+    , promptCompletions :: Maybe (String -> UzblM [String])
+    , promptExec :: Maybe String -> UzblM ()
+    }
 
 data UzblGlobal = UzblGlobal
   { uzblemSocket :: !FilePath
@@ -80,8 +85,7 @@ data UzblState = UzblState
   , uzblSocket :: Maybe FilePath
   , uzblVariables :: Config
   , uzblCookies :: Cookies
-  , uzblBind :: ModKey -> UzblM ()
-  , uzblPrompt :: Maybe Prompt
+  , uzblBindings :: Bindings
   , uzblPromptHistory :: Seq.Seq String
   }
 
@@ -98,8 +102,7 @@ emptyState = UzblState
   , uzblVariables = Map.empty
   --uzblEvents = Map.empty
   , uzblCookies = emptyCookies
-  , uzblBind = const nop
-  , uzblPrompt = Nothing
+  , uzblBindings = Command
   , uzblPromptHistory = Seq.empty
   }
 
@@ -175,6 +178,9 @@ goto u = run ("set uri=" ++ escape (expandURI u)) []
 status :: String -> UzblM ()
 status "" = setVar "status_message" $ ValStr ""
 status x = setVar "status_message" $ ValStr $ "<span color='#404'>" ++ mlEscape x ++ "</span> "
+
+modifyBindings :: (Bindings -> Bindings) -> UzblM ()
+modifyBindings f = modify $ \u -> u{ uzblBindings = f $ uzblBindings u }
 
 newUzbl :: Maybe String -> UzblM ()
 newUzbl uri = do

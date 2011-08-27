@@ -43,7 +43,7 @@ socketSet [sock] = modify $ \u -> u { uzblSocket = Just sock }
 socketSet _ = badArgs
 
 keyPress :: [String] -> UzblM ()
-keyPress [md,key] = ($ (readModifiers md, key)) . uzblBind =<< get 
+keyPress [md,key] = flip runBind (readModifiers md, key) . uzblBindings =<< get 
 keyPress _ = badArgs
 
 newWindow :: [String] -> UzblM ()
