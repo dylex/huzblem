@@ -3,7 +3,7 @@
 * {
 	color: #CCC !important;
 	background: none !important;
-	background-color: black !important;
+	background-color: #000 !important;
 }
 a:link {
 	color: #FFF !important;
@@ -11,5 +11,6 @@ a:link {
 a:visited {
 	color: #999 !important;
 }
-
-/* vim:set et ts=4: */
+a:focus {
+	color: #9F9 !important;
+}

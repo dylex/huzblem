@@ -94,6 +94,11 @@ toggleOrCount v l = maybe t c =<< countMaybe where
     | i <= length l = setVarMsg v (l !! pred i)
     | otherwise = t
 
+linkSelect :: String -> Maybe String -> UzblM ()
+linkSelect n t = do
+  runArgs "script" [uzblHome "linkselect.js"]
+  run $ "js linkselect(" ++ quote n ++ maybe "" (\r -> ", RegExp(" ++ quote r ++ ", 'i')") t ++ ")"
+
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
   [ ((0, "$"),	        scroll "horizontal" "end")
@@ -123,13 +128,17 @@ commandBinds = Map.fromAscList $
   , ((0, "Page_Up"),	scroll "vertical" . (++"%") =<< scaleCount (-100))
   , ((0, "Q"),	        run "exit")
   , ((0, "R"),		run "reload_ign_cache")
+  , ((0, "Return"),	runArgs "script" [uzblHome "activate.js"])
   , ((0, "Right"),	scroll "horizontal" =<< scrlCount True)
   , ((0, "Up"),		scroll "vertical" =<< scrlCount False)
   , ((0, "W"),		newUzbl . Just =<< uzblURI)
+  , ((0, "["),		linkSelect "prev" $ Just "\\\\bprev|^<")
   , ((0, "\\"),		toggleOrCount "view_source" onOff >> run "reload")
+  , ((0, "]"),		linkSelect "next" $ Just "\\\\bnext|>$")
   , ((0, "^"),	        scroll "horizontal" "begin")
   , ((0, "_"),	        run "zoom_out")
   , ((0, "e"),		runArgs "back" . return . show =<< count)
+  , ((0, "f"),		prompt "link " "" $ \t -> linkSelect t Nothing)
   , ((0, "h"),		scroll "horizontal" =<< scrlCount False)
   , ((0, "i"),		rawMode)
   , ((0, "l"),		run "search")

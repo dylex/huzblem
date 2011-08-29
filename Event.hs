@@ -86,7 +86,7 @@ loadCommit _ = badArgs
 
 loadFinish :: [String] -> UzblM ()
 loadFinish [u] = do
-  setVar "status_load" $ ValStr ""
+  setVar "status_load" $ ValStr "" -- "done"
   io . browseAdd u . uzblDatabase . uzblGlobal =<< ask
 loadFinish _ = badArgs
 
