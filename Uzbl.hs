@@ -61,7 +61,7 @@ data Bindings
   | Prompt 
     { promptPrompt :: !String
     , promptInput :: !Input
-    , promptCompletions :: Maybe (String -> UzblM [String])
+    , promptCompletion :: String -> UzblM (Maybe String)
     , promptExec :: Maybe String -> UzblM ()
     }
 

@@ -3,6 +3,7 @@ module Database
   , databaseOpen
   , databaseClose
   , browseAdd
+  , browseFind
   ) where
 
 import Control.Monad
@@ -11,8 +12,11 @@ import Data.Array
 import Database.HDBC
 import Database.HDBC.PostgreSQL
 
+import Util
+
 data Query 
   = BrowseAdd
+  | BrowseFind
   deriving (Eq, Ord, Bounded, Enum, Ix)
 
 data Database = Database
@@ -23,13 +27,20 @@ data Database = Database
 queries :: [String]
 queries = 
   [ "SELECT browse_add(?)"
+  , "SELECT uri FROM browse WHERE uri LIKE '%' || ? || '%' ORDER BY last DESC LIMIT 1"
   ]
 
 query :: Database -> Query -> Statement
 query = (!) . databaseQueries
 
-browseAdd :: String -> Database -> IO ()
-browseAdd u d = void $ execute (query d BrowseAdd) [toSql u]
+browseAdd :: Database -> String -> IO ()
+browseAdd d u = void $ execute (query d BrowseAdd) [SqlString u]
+
+browseFind :: Database -> String -> IO (Maybe String)
+browseFind d u = do
+  void $ execute q [SqlString u]
+  fmap (fromSql . head) =.< fetchRow q
+  where q = query d BrowseFind
 
 databaseOpen :: IO Database
 databaseOpen = do

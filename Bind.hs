@@ -15,6 +15,7 @@ import Config
 import Uzbl
 import Keys
 import Cookies
+import Database
 import Prompt
 
 pasteURI :: UzblM ()
@@ -47,8 +48,11 @@ cookieSave = do
   io . saveCookies (uzblHome "cookies.save") . uzblCookies =<< get
   status "cookies saved"
 
+promptComplete :: String -> String -> (String -> UzblM (Maybe String)) -> (String -> UzblM ()) -> UzblM ()
+promptComplete p i c e = promptMode p i c ((>>) commandMode . maybe nop e)
+
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
-prompt p i e = promptMode p i ((>>) commandMode . maybe nop e)
+prompt p i e = promptComplete p i (const $ return Nothing) e
 
 button2 :: UzblM ()
 button2 = do
@@ -99,6 +103,11 @@ linkSelect n t = do
   runArgs "script" [uzblHome "linkselect.js"]
   run $ "js linkselect(" ++ quote n ++ maybe "" (\r -> ", RegExp(" ++ quote r ++ ", 'i')") t ++ ")"
 
+promptOpen :: UzblM ()
+promptOpen = do
+  db <- uzblDatabase . uzblGlobal =.< ask
+  promptComplete "uri " "" (io . browseFind db) goto
+
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
   [ ((0, "$"),	        scroll "horizontal" "end")
@@ -143,7 +152,7 @@ commandBinds = Map.fromAscList $
   , ((0, "i"),		rawMode)
   , ((0, "l"),		run "search")
   , ((0, "n"),		scroll "vertical" =<< scrlCount False)
-  , ((0, "o"),		prompt "uri " "" goto)
+  , ((0, "o"),		promptOpen)
   , ((0, "p"),          pasteURI)
   , ((0, "r"),		run "reload")
   , ((0, "s"),		scroll "horizontal" =<< scrlCount True)

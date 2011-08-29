@@ -85,6 +85,13 @@ historyFind dir u@UzblState
      }
 historyFind _ u = u
 
+complete :: UzblM ()
+complete = do
+  u@UzblState{ uzblBindings = p } <- get
+  maybe nop (\c ->
+      put u{ uzblBindings = p{ promptInput = unInput c } }) 
+    =<< promptCompletion p (input (promptInput p))
+
 promptBinds :: Map.Map ModKey (UzblM ())
 promptBinds = Map.fromAscList 
   [ ((0, "BackSpace"),  modifyInput $ first tailSafe)
@@ -96,6 +103,7 @@ promptBinds = Map.fromAscList
   , ((0, "Left"),       modifyInput inputLeft)
   , ((0, "Return"),     promptRun)
   , ((0, "Right"),      modifyInput inputRight)
+  , ((0, "Tab"),        complete)
   , ((0, "Up"),         modify historyUp)
   , ((0, "space"),      promptInsert " ")
   , ((modCtrl, "n"),    modify $ historyFind True)
@@ -120,12 +128,12 @@ promptBind mk = do
   bindMap promptBinds (promptInsert . snd) mk
   promptUpdate
 
-promptMode :: String -> String -> (Maybe String -> UzblM ()) -> UzblM ()
-promptMode p i e = do
+promptMode :: String -> String -> (String -> UzblM (Maybe String)) -> (Maybe String -> UzblM ()) -> UzblM ()
+promptMode p i c e = do
   modifyBindings $ const $ Prompt
     { promptPrompt = p
     , promptInput = unInput i
-    , promptCompletions = Nothing
+    , promptCompletion = c
     , promptExec = e
     }
   promptUpdate
