@@ -21,6 +21,7 @@ import Uzbl
 import Bind
 import Cookies
 import Database
+import Scripts
 
 badArgs :: UzblM ()
 badArgs = log "unknown arguments"
@@ -80,7 +81,9 @@ loadStart [u] = do
 loadStart _ = badArgs
 
 loadCommit :: [String] -> UzblM ()
-loadCommit [_] =
+loadCommit [u] = do
+  let dom = uriRegName =<< parseURI u
+  run $ script $ scriptBlock (False,[]) (False,maybeToList dom) (True,[]) ++ scriptKillScripts
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs
 

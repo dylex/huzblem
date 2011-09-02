@@ -1,4 +1,3 @@
-back/forward count args
 tab completion
 	browse history
 browse marks
@@ -6,3 +5,5 @@ browse marks
 	completion?
 vi prompt mode
 link "follow" numbering
+block
+	inline page scripts

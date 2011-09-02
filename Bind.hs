@@ -17,6 +17,7 @@ import Keys
 import Cookies
 import Database
 import Prompt
+import Scripts
 
 pasteURI :: UzblM ()
 pasteURI = io (capture "xclip" ["-o"]) >>= maybe nop goto
@@ -99,9 +100,7 @@ toggleOrCount v l = maybe t c =<< countMaybe where
     | otherwise = t
 
 linkSelect :: String -> Maybe String -> UzblM ()
-linkSelect n t = do
-  runArgs "script" [uzblHome "linkselect.js"]
-  run $ "js linkselect(" ++ quote n ++ maybe "" (\r -> ", RegExp(" ++ quote r ++ ", 'i')") t ++ ")"
+linkSelect n t = run $ script $ scriptLinkSelect n t
 
 promptOpen :: UzblM ()
 promptOpen = do
@@ -137,7 +136,7 @@ commandBinds = Map.fromAscList $
   , ((0, "Page_Up"),	scroll "vertical" . (++"%") =<< scaleCount (-100))
   , ((0, "Q"),	        run "exit")
   , ((0, "R"),		run "reload_ign_cache")
-  , ((0, "Return"),	runArgs "script" [uzblHome "activate.js"])
+  , ((0, "Return"),	run $ script scriptActivate)
   , ((0, "Right"),	scroll "horizontal" =<< scrlCount True)
   , ((0, "Up"),		scroll "vertical" =<< scrlCount False)
   , ((0, "W"),		newUzbl . Just =<< uzblURI)
