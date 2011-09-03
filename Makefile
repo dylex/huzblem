@@ -1,4 +1,4 @@
-default: huzblem
+default: huzblem all pguri.sql
 
 huzblem:
 	ghc --make -threaded -O -Wall $@.hs -i -i. -o $@
@@ -10,3 +10,5 @@ MODULES = pguri
 PG_CONFIG = pg_config
 PGXS := $(shell pg_config --pgxs)
 include $(PGXS)
+%.sql: %.sql.in
+	sed 's,MODULE_PATHNAME,$(CURDIR)/$*,g' $< >$@

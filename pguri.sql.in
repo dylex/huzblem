@@ -1,0 +1,108 @@
+CREATE TYPE domainname;
+
+CREATE OR REPLACE FUNCTION domainname_in(cstring) 	RETURNS domainname LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+CREATE OR REPLACE FUNCTION domainname_out(domainname) 	RETURNS cstring    LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+CREATE OR REPLACE FUNCTION domainname_recv(internal) 	RETURNS domainname LANGUAGE internal STRICT IMMUTABLE AS 'textsend';
+CREATE OR REPLACE FUNCTION domainname_send(domainname) 	RETURNS bytea 	   LANGUAGE internal STRICT IMMUTABLE AS 'textrecv';
+
+CREATE TYPE domainname (LIKE = text,
+	INPUT = domainname_in, OUTPUT = domainname_out,
+	RECEIVE = domainname_recv, SEND = domainname_send
+);
+
+CREATE OR REPLACE FUNCTION domainname_cast(domainname) RETURNS text LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+CREATE OR REPLACE FUNCTION domainname_cast(text) RETURNS domainname LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+
+--CREATE CAST (domainname AS text) WITH FUNCTION domainname_cast(domainname) AS IMPLICIT;
+--CREATE CAST (text AS domainname) WITH FUNCTION domainname_cast(text) AS IMPLICIT;
+
+CREATE OR REPLACE FUNCTION domainname_eq(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'texteq';
+CREATE OR REPLACE FUNCTION domainname_ne(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'textne';
+CREATE OR REPLACE FUNCTION domainname_lt(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'text_lt';
+CREATE OR REPLACE FUNCTION domainname_le(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'text_le';
+CREATE OR REPLACE FUNCTION domainname_gt(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'text_gt';
+CREATE OR REPLACE FUNCTION domainname_ge(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'text_ge';
+CREATE OR REPLACE FUNCTION domainname_cmp(domainname, domainname) RETURNS int LANGUAGE internal STRICT IMMUTABLE AS 'bttextcmp';
+CREATE OR REPLACE FUNCTION domainname_hash(domainname) RETURNS int LANGUAGE internal STRICT IMMUTABLE AS 'hashtext';
+CREATE OR REPLACE FUNCTION domainname_like(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'textlike';
+CREATE OR REPLACE FUNCTION domainname_nlike(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'textnlike';
+
+CREATE OPERATOR =  (PROCEDURE = domainname_eq, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '=', NEGATOR = '<>', RESTRICT = eqsel, JOIN = eqjoinsel, MERGES, HASHES);
+CREATE OPERATOR <> (PROCEDURE = domainname_ne, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '<>', NEGATOR = '=', RESTRICT = neqsel, JOIN = neqjoinsel);
+CREATE OPERATOR <  (PROCEDURE = domainname_lt, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '>', NEGATOR = '>=', RESTRICT = scalarltsel, JOIN = scalarltjoinsel);
+CREATE OPERATOR <= (PROCEDURE = domainname_le, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '>=', NEGATOR = '>', RESTRICT = scalarltsel, JOIN = scalarltjoinsel);
+CREATE OPERATOR >  (PROCEDURE = domainname_gt, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '<', NEGATOR = '<=', RESTRICT = scalargtsel, JOIN = scalargtjoinsel);
+CREATE OPERATOR >= (PROCEDURE = domainname_ge, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '<=', NEGATOR = '<', RESTRICT = scalargtsel, JOIN = scalargtjoinsel);
+
+CREATE OPERATOR ~~ (PROCEDURE = domainname_like, LEFTARG = domainname, RIGHTARG = domainname, NEGATOR = '!~~', RESTRICT = likesel, JOIN = likejoinsel);
+CREATE OPERATOR !~~ (PROCEDURE = domainname_nlike, LEFTARG = domainname, RIGHTARG = domainname, NEGATOR = '~~', RESTRICT = nlikesel, JOIN = nlikejoinsel);
+
+CREATE OPERATOR CLASS domainname_ops DEFAULT FOR TYPE domainname USING btree FAMILY text_ops AS
+	OPERATOR 1 <  ,
+	OPERATOR 2 <= ,
+	OPERATOR 3 =  ,
+	OPERATOR 4 >= ,
+	OPERATOR 5 >  ,
+	FUNCTION 1 domainname_cmp(domainname, domainname);
+
+CREATE OPERATOR CLASS domainname_ops DEFAULT FOR TYPE domainname USING hash FAMILY text_ops AS
+	OPERATOR 1 = ,
+	FUNCTION 1 domainname_hash(domainname);
+
+-- CREATE OR REPLACE FUNCTION domainname_parents(domainname) RETURNS SETOF domainname LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+CREATE OR REPLACE FUNCTION domainname_parents(domainname) RETURNS domainname[] LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+
+CREATE OR REPLACE FUNCTION domainname_contains(domainname, domainname) RETURNS bool LANGUAGE SQL STRICT IMMUTABLE AS 
+	$$ SELECT $1 = ANY (domainname_parents($2)) $$;
+CREATE OR REPLACE FUNCTION domainname_contained(domainname, domainname) RETURNS bool LANGUAGE SQL STRICT IMMUTABLE AS 
+	$$ SELECT $1 = $2 OR $1 LIKE ($2 || '.%') $$;
+
+CREATE OPERATOR @> (LEFTARG = domainname, RIGHTARG = domainname, PROCEDURE = domainname_contains,
+	COMMUTATOR = '<@', RESTRICT = contsel, JOIN = contjoinsel);
+CREATE OPERATOR <@ (LEFTARG = domainname, RIGHTARG = domainname, PROCEDURE = domainname_contained,
+	COMMUTATOR = '@>', RESTRICT = contsel, JOIN = contjoinsel);
+
+
+CREATE TYPE uri_data AS (
+	scheme	TEXT,
+	host	domainname,
+	port	SMALLINT,
+	path	TEXT
+);
+
+CREATE OR REPLACE FUNCTION uri_data_in(cstring)   RETURNS uri_data LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+CREATE OR REPLACE FUNCTION uri_data_out(uri_data) RETURNS cstring  LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+
+CREATE TYPE uri;
+
+CREATE OR REPLACE FUNCTION uri_in(cstring) RETURNS uri  LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME','uri_data_in';
+CREATE OR REPLACE FUNCTION uri_out(uri) RETURNS cstring LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME','uri_data_out';
+
+CREATE TYPE uri (
+	LIKE = uri_data,
+	INPUT = uri_in,
+	OUTPUT = uri_out
+);
+
+CREATE OR REPLACE FUNCTION uri_cast(uri_data) RETURNS uri LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+CREATE OR REPLACE FUNCTION uri_cast(uri) RETURNS uri_data LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
+
+CREATE CAST (uri_data AS uri) WITH FUNCTION uri_cast(uri_data) AS IMPLICIT;
+CREATE CAST (uri AS uri_data) WITH FUNCTION uri_cast(uri) AS IMPLICIT;
+
+CREATE OR REPLACE FUNCTION uri_contains(uri_data, uri_data) RETURNS bool LANGUAGE SQL STRICT IMMUTABLE AS
+	$$ SELECT ($1.scheme IS NULL OR $1.scheme = $2.scheme) 
+		AND ($1.host IS NULL OR domainname_contains($1.host, $2.host))
+		AND ($1.port IS NULL OR $1.port = $2.port)
+		AND ($1.path IS NULL OR $2.path LIKE ($1.path || '%')) $$;
+CREATE OR REPLACE FUNCTION uri_contained(uri_data, uri_data) RETURNS bool LANGUAGE SQL STRICT IMMUTABLE AS
+	$$ SELECT ($2.scheme IS NULL OR $1.scheme = $2.scheme) 
+		AND ($2.host IS NULL OR domainname_contained($1.host, $2.host))
+		AND ($2.port IS NULL OR $1.port = $2.port)
+		AND ($2.path IS NULL OR $1.path LIKE ($2.path || '%')) $$;
+
+CREATE OPERATOR @> (LEFTARG = uri_data, RIGHTARG = uri_data, PROCEDURE = uri_contains,
+	COMMUTATOR = '<@', RESTRICT = contsel, JOIN = contjoinsel);
+CREATE OPERATOR <@ (LEFTARG = uri_data, RIGHTARG = uri_data, PROCEDURE = uri_contained,
+	COMMUTATOR = '@>', RESTRICT = contsel, JOIN = contjoinsel);
+

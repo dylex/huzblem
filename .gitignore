@@ -1,3 +1,5 @@
 *.hi
 *.o
+*.so
 huzblem
+pguri.sql
