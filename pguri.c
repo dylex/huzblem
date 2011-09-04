@@ -3,12 +3,20 @@
 #include <postgres.h>
 #include <fmgr.h>
 #include <funcapi.h>
+#include <catalog/pg_type.h>
+#include <libpq/pqformat.h>
 #include <utils/builtins.h>
 #include <utils/array.h>
-#include <libpq/pqformat.h>
-#include <catalog/pg_type.h>
+#include <utils/typcache.h>
 
 PG_MODULE_MAGIC;
+
+PG_FUNCTION_INFO_V1(unsafe_cast);
+Datum unsafe_cast(PG_FUNCTION_ARGS);
+Datum unsafe_cast(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+}
 
 #define MIN(A, B) ((B) < (A) ? (B) : (A))
 
@@ -79,24 +87,40 @@ Datum domainname_in(PG_FUNCTION_ARGS)
 	PG_RETURN_TEXT_P(domainname_new(in, len));
 }
 
+PG_FUNCTION_INFO_V1(domainname_read);
+Datum domainname_read(PG_FUNCTION_ARGS);
+Datum domainname_read(PG_FUNCTION_ARGS)
+{
+	text *in = PG_GETARG_TEXT_P(0);
+	text *out = domainname_new(VARDATA(in), VARSIZE_ANY_EXHDR(in));
+	PG_FREE_IF_COPY(in, 0);
+	PG_RETURN_TEXT_P(out);
+}
+
 PG_FUNCTION_INFO_V1(domainname_out);
 Datum domainname_out(PG_FUNCTION_ARGS);
 Datum domainname_out(PG_FUNCTION_ARGS)
 {
-	text *in = PG_GETARG_TEXT_PP(0);
+	text *in = PG_GETARG_TEXT_P(0);
 	size_t len = VARSIZE_ANY_EXHDR(in);
 	char *out = palloc(len+1);
-	domainname_flip(out, VARDATA_ANY(in), len);
+	domainname_flip(out, VARDATA(in), len);
 	out[len] = '\0';
 	PG_FREE_IF_COPY(in, 0);
 	PG_RETURN_CSTRING(out);
 }
 
-PG_FUNCTION_INFO_V1(domainname_cast);
-Datum domainname_cast(PG_FUNCTION_ARGS);
-Datum domainname_cast(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(domainname_show);
+Datum domainname_show(PG_FUNCTION_ARGS);
+Datum domainname_show(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+	text *in = PG_GETARG_TEXT_P(0);
+	size_t len = VARSIZE_ANY(in);
+	text *out = (text *)palloc(len);
+	SET_VARSIZE(out, len);
+	domainname_flip(VARDATA(out), VARDATA(in), len - VARHDRSZ);
+	PG_FREE_IF_COPY(in, 0);
+	PG_RETURN_TEXT_P(out);
 }
 
 #if 0
@@ -166,6 +190,7 @@ Datum domainname_parents(PG_FUNCTION_ARGS)
 		p ++;
 	}
 
+	PG_FREE_IF_COPY(in, 0);
 	PG_RETURN_ARRAYTYPE_P(r);
 }
 #endif
@@ -212,6 +237,7 @@ Datum domainname_parts(PG_FUNCTION_ARGS)
 		p ++;
 	}
 
+	PG_FREE_IF_COPY(in, 0);
 	PG_RETURN_ARRAYTYPE_P(r);
 }
 
@@ -303,39 +329,26 @@ static bool uri_parse(const char *str, size_t len, struct uri_info *uri)
 	return true;
 }
 
-enum uri_data_tuple {
-	URI_SCHEME = 0,
-	URI_HOST,
+enum uri_tuple {
+	URI_HOST = 0,
 	URI_PORT,
 	URI_PATH,
+	URI_SCHEME,
 
-	URI_DATA_LEN
+	URI_LEN
 };
 
-
-static TupleDesc uri_data_tuple_desc()
-{
-	static TupleDesc td = 0;
-	if (!td)
-		td = RelationNameGetTupleDesc("uri_data");
-	return td;
-}
-
-PG_FUNCTION_INFO_V1(uri_data_in);
-Datum uri_data_in(PG_FUNCTION_ARGS);
-Datum uri_data_in(PG_FUNCTION_ARGS)
+static HeapTuple uri_new(FunctionCallInfo fcinfo, const char *str, size_t len)
 {
 	TupleDesc td;
-	const char *str = PG_GETARG_CSTRING(0);
 	struct uri_info u;
-	Datum d[URI_DATA_LEN];
-	bool n[URI_DATA_LEN];
+	Datum d[URI_LEN];
+	bool n[URI_LEN];
 
-	if (!uri_parse(str, strlen(str), &u))
+	if (!uri_parse(str, len, &u))
 		ereport(ERROR, (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-					errmsg("invalid uri: \"%s\"", str)));
+					errmsg("invalid uri: \"%.*s\"", (int)len, str)));
 
-	// get_call_result_type(fcinfo, NULL, &td);
 	if (!(n[URI_SCHEME] = !u.scheme))
 		d[URI_SCHEME] = PointerGetDatum(cstring_to_text_with_len(u.scheme, u.scheme_len));
 	if (!(n[URI_HOST] = !u.host))
@@ -344,26 +357,49 @@ Datum uri_data_in(PG_FUNCTION_ARGS)
 		d[URI_PORT] = Int16GetDatum(u.port);
 	if (!(n[URI_PATH] = !u.path))
 		d[URI_PATH] = PointerGetDatum(cstring_to_text_with_len(u.path, u.path_len));
-	td = BlessTupleDesc(uri_data_tuple_desc());
-	PG_RETURN_DATUM(HeapTupleGetDatum(heap_form_tuple(td, d, n)));
+	get_call_result_type(fcinfo, NULL, &td);
+	return heap_form_tuple(BlessTupleDesc(td), d, n);
 }
 
-PG_FUNCTION_INFO_V1(uri_data_out);
-Datum uri_data_out(PG_FUNCTION_ARGS);
-Datum uri_data_out(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(uri_in);
+Datum uri_in(PG_FUNCTION_ARGS);
+Datum uri_in(PG_FUNCTION_ARGS)
 {
-	HeapTupleHeader ud = PG_GETARG_HEAPTUPLEHEADER(0);
-	Datum d[URI_DATA_LEN];
-	bool n[URI_DATA_LEN];
-	unsigned i;
+	const char *str = PG_GETARG_CSTRING(0);
+	PG_RETURN_DATUM(HeapTupleGetDatum(uri_new(fcinfo, str, strlen(str))));
+}
+
+PG_FUNCTION_INFO_V1(uri_read);
+Datum uri_read(PG_FUNCTION_ARGS);
+Datum uri_read(PG_FUNCTION_ARGS)
+{
+	text *in = PG_GETARG_TEXT_P(0);
+	HeapTuple out = uri_new(fcinfo, VARDATA(in), VARSIZE_ANY_EXHDR(in));
+	PG_FREE_IF_COPY(in, 0);
+	PG_RETURN_DATUM(HeapTupleGetDatum(out));
+}
+
+static void *uri_char(HeapTupleHeader ud, bool hdr, bool term)
+{
+	TupleDesc td;
+	HeapTupleData tuple;
+	Datum d[URI_LEN];
+	bool n[URI_LEN];
 	text *scheme = NULL, *host = NULL, *path = NULL;
 	int16 port;
 	char portbuf[8];
 	unsigned schemelen = 0, hostlen = 0, portlen = 0, pathlen = 0;
-	char *out, *p;
+	unsigned len;
+	void *out;
+	char *p;
 
-	for (i = 0; i < URI_DATA_LEN; i++)
-		d[i] = GetAttributeByNum(ud, 1+i, &n[i]);
+	td = lookup_rowtype_tupdesc(HeapTupleHeaderGetTypeId(ud), HeapTupleHeaderGetTypMod(ud));
+	tuple.t_len = HeapTupleHeaderGetDatumLength(ud);
+	ItemPointerSetInvalid(&(tuple.t_self));
+	tuple.t_tableOid = InvalidOid;
+	tuple.t_data = ud;
+	heap_deform_tuple(&tuple, td, d, n);
+	ReleaseTupleDesc(td);
 
 	if (!n[URI_SCHEME])
 	{
@@ -386,7 +422,11 @@ Datum uri_data_out(PG_FUNCTION_ARGS)
 		pathlen = VARSIZE_ANY_EXHDR(path);
 	}
 
-	p = out = palloc(schemelen + (scheme ? 3 : 0) + hostlen + portlen + pathlen + 1);
+	len = (hdr ? VARHDRSZ : 0) + schemelen + (scheme ? 3 : 0) + hostlen + portlen + pathlen + term;
+	out = palloc(len);
+	if (hdr)
+		SET_VARSIZE(out, len);
+	p = hdr ? VARDATA(out) : out;
 
 	if (scheme)
 	{
@@ -408,16 +448,26 @@ Datum uri_data_out(PG_FUNCTION_ARGS)
 		memcpy(p, VARDATA(path), pathlen);
 		p += pathlen;
 	}
-	*p = '\0';
+	if (term)
+		*p = '\0';
 
-	PG_RETURN_CSTRING(out);
+	return out;
 }
 
-PG_FUNCTION_INFO_V1(uri_cast);
-Datum uri_cast(PG_FUNCTION_ARGS);
-Datum uri_cast(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(uri_out);
+Datum uri_out(PG_FUNCTION_ARGS);
+Datum uri_out(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+	HeapTupleHeader ud = PG_GETARG_HEAPTUPLEHEADER(0);
+	PG_RETURN_CSTRING(uri_char(ud, 0, 1));
+}
+
+PG_FUNCTION_INFO_V1(uri_show);
+Datum uri_show(PG_FUNCTION_ARGS);
+Datum uri_show(PG_FUNCTION_ARGS)
+{
+	HeapTupleHeader ud = PG_GETARG_HEAPTUPLEHEADER(0);
+	PG_RETURN_TEXT_P(uri_char(ud, 1, 0));
 }
 
 void _PG_init(void);

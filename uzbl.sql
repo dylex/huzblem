@@ -1,9 +1,10 @@
 CREATE TABLE browse (
 	id	serial PRIMARY KEY,
-	uri	text UNIQUE NOT NULL,
+	uri	uri UNIQUE NOT NULL,
 	last	timestamp (0) NOT NULL DEFAULT now(),
 	visits	integer NOT NULL DEFAULT 1
 );
+-- CREATE INDEX browse_domain_idx ON browse (((uri).domain));
 
 CREATE OR REPLACE FUNCTION browse_add(text) RETURNS integer LANGUAGE plpgsql STRICT AS
 $$

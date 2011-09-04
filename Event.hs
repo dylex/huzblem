@@ -83,6 +83,7 @@ loadStart :: [String] -> UzblM ()
 loadStart [u] = do
   variableSet ["uri","str",u] -- fake it here, since we don't get the event otherwise
   setVar "status_load" $ ValStr "wait"
+  status ""
 loadStart _ = badArgs
 
 loadCommit :: [String] -> UzblM ()
