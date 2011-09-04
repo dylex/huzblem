@@ -12,7 +12,6 @@ import Data.Maybe
 import Numeric
 
 import Safe
-import Text.URI
 
 import Util
 import Config
@@ -22,6 +21,7 @@ import Bind
 import Cookies
 import Database
 import Scripts
+import URIs
 
 badArgs :: UzblM ()
 badArgs = log "unknown arguments"
@@ -30,9 +30,15 @@ commandError :: [String] -> UzblM ()
 commandError [_] = log ""
 commandError _ = badArgs
 
+commandExecuted :: [String] -> UzblM ()
+commandExecuted ("add_cookie":args) = maybe badArgs ac $ argCookie args where
+  ac c = modify $ \u -> u{ uzblCookies = cookieAdd c (uzblCookies u) }
+commandExecuted _ = nop
+
 variableSet :: [String] -> UzblM ()
-variableSet [var,typ,sval] | Just val <- readValue typ sval =
+variableSet [var,typ,sval] | Just val <- readValue typ sval = do
   modify $ \u -> u{ uzblVariables = Map.insert var val (uzblVariables u) }
+  when ("block_" `isPrefixOf` var) updateBlockScript
 variableSet _ = badArgs
 
 fifoSet :: [String] -> UzblM ()
@@ -51,16 +57,15 @@ newWindow :: [String] -> UzblM ()
 newWindow [u] = goto u
 newWindow _ = badArgs
 
+allow :: String -> String -> UzblM Bool
+allow bt dom = do
+  (d, l) <- blockMode . toEnum =.< getVarInt ("block_" ++ bt)
+  fromMaybe d =.< if l
+    then withDatabase $ blockTest dom
+    else return Nothing
+
 acceptCookie :: Cookie -> UzblM Bool
-acceptCookie c = do
-  cm <- getVarInt "cookie_mode"
-  case cm of
-    2 -> return True
-    1 -> do
-      u <- uzblURI -- should be new URI, possibly unknown
-      let dom = fromMaybe "" $ (uriRegName <=< parseURI) u
-      return $ cookieDomain c `isSuffixOf` dom || cookieDomain c == '.':dom
-    _ -> return False
+acceptCookie c = allow "cookie" (cookieDomain c)
 
 addCookie :: [String] -> UzblM ()
 addCookie args = maybe badArgs ac $ argCookie args where
@@ -82,16 +87,16 @@ loadStart _ = badArgs
 
 loadCommit :: [String] -> UzblM ()
 loadCommit [u] = do
-  let dom = uriRegName =<< parseURI u
-  run $ script $ scriptBlock (False,[]) (False,maybeToList dom) (True,[]) ++ scriptKillScripts
+  b <- uzblBlockScript =.< get
+  as <- allow "script" (uriDomain u)
+  run $ script $ b ++ if as then "" else scriptKillScripts
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs
 
 loadFinish :: [String] -> UzblM ()
 loadFinish [u] = do
   setVar "status_load" $ ValStr "" -- "done"
-  db <- uzblDatabase . uzblGlobal =.< ask
-  io $ browseAdd db u
+  withDatabase $ browseAdd u
 loadFinish _ = badArgs
 
 loadProgress :: [String] -> UzblM ()
@@ -118,6 +123,7 @@ events :: Map.Map Event ([String] -> UzblM ())
 events = Map.fromAscList $ map (first Event) $ 
   [ ("ADD_COOKIE",	addCookie)
   , ("COMMAND_ERROR",	commandError)
+  , ("COMMAND_EXECUTED",commandExecuted)
   , ("FIFO_SET",	fifoSet)
   , ("FORM_ACTIVE",	\_ -> rawMode)
   , ("KEY_PRESS",	keyPress)

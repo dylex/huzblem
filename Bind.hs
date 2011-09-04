@@ -18,6 +18,7 @@ import Cookies
 import Database
 import Prompt
 import Scripts
+import URIs
 
 pasteURI :: UzblM ()
 pasteURI = io (capture "xclip" ["-o"]) >>= maybe nop goto
@@ -103,9 +104,17 @@ linkSelect :: String -> Maybe String -> UzblM ()
 linkSelect n t = run $ script $ scriptLinkSelect n t
 
 promptOpen :: UzblM ()
-promptOpen = do
-  db <- uzblDatabase . uzblGlobal =.< ask
-  promptComplete "uri " "" (io . browseFind db) goto
+promptOpen = promptComplete "uri " "" (withDatabase . browseFind) goto
+
+toggleBlock :: String -> UzblM ()
+toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [minBound..maxBound::BlockMode]
+
+promptBlock :: Maybe Bool -> UzblM ()
+promptBlock b = do
+  u <- uzblURI
+  prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (uriDomain u) $ \d -> do
+    withDatabase $ blockSet d b
+    updateBlockScript
 
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
@@ -128,7 +137,6 @@ commandBinds = Map.fromAscList $
   , ((0, "Escape"),	commandMode)
   , ((0, "G"),	        scroll "vertical" "end")
   , ((0, "Home"),	scroll "vertical" "begin")
-  , ((0, "K"),	        toggleOrCount "cookie_mode" $ map ValInt [0,1])
   , ((0, "L"),		run "search_reverse")
   , ((0, "Left"),       scroll "horizontal" =<< scrlCount False)
   , ((0, "O"),		uzblURI >>= \u -> prompt "uri " u goto)
@@ -162,13 +170,21 @@ commandBinds = Map.fromAscList $
   , ((0, "y"),		copyURI)
   , ((0, "z"),		run "stop")
   , ((0, "{"),	        toggleOrCount "enable_spellcheck" onOff)
-  , ((modCtrl, "k"),	cookieSave)
+  , ((modMod1, "C"),	cookieSave)
+  , ((modMod1, "b"),	promptBlock (Just False))
+  , ((modMod1, "c"),	toggleBlock "cookie")
+  , ((modMod1, "f"),	toggleBlock "iframe")
+  , ((modMod1, "i"),	toggleBlock "img")
   , ((modMod1, "m"),    goto "~/.mozilla/bookmarks.html")
+  , ((modMod1, "s"),	toggleBlock "script")
+  , ((modMod1, "t"),	promptBlock (Just True))
+  , ((modMod1, "u"),	promptBlock Nothing)
+  , ((modMod1, "v"),	toggleOrCount "block_verbose" onOff)
   , ((modMod1, "x"),    setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
   ]
 
 commandBind :: ModKey -> UzblM ()
-commandBind = bindMap commandBinds (\_ -> log "no binding")
+commandBind = bindMap commandBinds (\_ -> debug "no binding")
 
 commandMode :: UzblM ()
 commandMode = do

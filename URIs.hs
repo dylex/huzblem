@@ -1,10 +1,12 @@
 module URIs
-  ( expandURI
+  ( uriDomain, inDomain, uriInDomain
+  , expandURI
   ) where
 
 import Data.Char
 import Data.List
 import qualified Data.Map as Map
+import Data.Maybe
 
 import Text.URI
 
@@ -12,6 +14,16 @@ import Config
 
 okInArg :: Char -> Bool
 okInArg c = isAlphaNum c || c `elem` "!$'()*+,/:"
+
+uriDomain :: String -> String
+uriDomain u = fromMaybe "" $ uriRegName =<< parseURI u
+
+inDomain :: String -> String -> Bool
+inDomain h d'@('.':d) = isSuffixOf d' h || h == d
+inDomain h d = h == d || isSuffixOf ('.':d) h
+
+uriInDomain :: String -> String -> Bool
+uriInDomain = inDomain . uriDomain
 
 infixr 5 ?=
 (?=) :: String -> String -> String

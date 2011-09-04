@@ -92,17 +92,17 @@ writeCookie = intercalate "\t" . wc where
 cookieArgs :: Cookie -> [String]
 cookieArgs c = [cookieDomain c, cookiePath c, cookieName c, cookieValue c, if cookieSecure c then "https" else "http", cookieExpires c]
 
-loadCookiesWith :: (String -> Maybe Cookie) -> FilePath -> IO Cookies
-loadCookiesWith c = Set.fromList . mapMaybe c . lines .=< readFile
+loadCookiesWith :: (String -> Maybe Cookie) -> FilePath -> IO [Cookie]
+loadCookiesWith c = mapMaybe c . lines .=< readFile
 
 loadElinksCookies :: FilePath -> IO Cookies
-loadElinksCookies = loadCookiesWith parseElinksCookie
+loadElinksCookies = Set.fromList .=< loadCookiesWith parseElinksCookie
 
 loadCookies :: FilePath -> IO Cookies
-loadCookies = loadCookiesWith parseCookie
+loadCookies = Set.fromDistinctAscList .=< loadCookiesWith parseCookie
 
 saveCookies :: FilePath -> Cookies -> IO ()
-saveCookies f = writeFile f . unlines . map writeCookie . Set.toList
+saveCookies f = writeFile f . unlines . map writeCookie . Set.toAscList
 
 cookiesArgs :: Cookies -> [[String]]
 cookiesArgs = map cookieArgs . Set.toList

@@ -16,6 +16,7 @@ module Util
 
 import Control.Monad
 import Data.Char
+import Data.List
 import Data.Maybe
 import Numeric
 import System.Exit
@@ -72,15 +73,20 @@ quotedWords [] = []
 quotedWords (c:s) | isSpace c = quotedWords s
 quotedWords s = w : quotedWords r where (w,r) = quotedWord s
 
-quote :: String -> String
-quote = show
-
 escape :: String -> String
 escape [] = []
 escape (c:s)
   | c `elem` "@\\" = '\\':s'
   | otherwise = s'
   where s' = c:escape s
+
+quote :: String -> String
+quote s = '"' : q s where
+  q "" = "\""
+  q (c:s)
+    | c `elem` "\"@\\" = '\\':s'
+    | otherwise = s'
+    where s' = c:q s
 
 mlEscape :: String -> String
 mlEscape "" = ""

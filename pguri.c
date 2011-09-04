@@ -6,6 +6,7 @@
 #include <utils/builtins.h>
 #include <utils/array.h>
 #include <libpq/pqformat.h>
+#include <catalog/pg_type.h>
 
 PG_MODULE_MAGIC;
 
@@ -60,7 +61,10 @@ static void domainname_flip(char *out, const char *in, size_t len)
 
 static text *domainname_new(const char *str, size_t len)
 {
-	text *out = (text *)palloc(VARHDRSZ + len);
+	text *out;
+	if (len && str[len-1] == '.')
+		len --;
+	out = (text *)palloc(VARHDRSZ + len);
 	SET_VARSIZE(out, VARHDRSZ + len);
 	domainname_flip(VARDATA(out), str, len);
 	return out;
@@ -146,7 +150,7 @@ Datum domainname_parents(PG_FUNCTION_ARGS)
 	r->dataoffset = 0;
 	r->elemtype = get_fn_expr_argtype(fcinfo->flinfo, 0);
 	*ARR_DIMS(r) = nelems;
-	*ARR_LBOUND(r) = 1;
+	*ARR_LBOUND(r) = 0;
 
 	p = s;
 	o = ARR_DATA_PTR(r);
@@ -165,6 +169,51 @@ Datum domainname_parents(PG_FUNCTION_ARGS)
 	PG_RETURN_ARRAYTYPE_P(r);
 }
 #endif
+
+PG_FUNCTION_INFO_V1(domainname_parts);
+Datum domainname_parts(PG_FUNCTION_ARGS);
+Datum domainname_parts(PG_FUNCTION_ARGS)
+{
+	text *in = PG_GETARG_TEXT_P(0);
+	const char *s = VARDATA(in);
+	const char *b = s, *p = s, *e = s + VARSIZE_ANY_EXHDR(in);
+	int nelems = 0;
+	int nbytes = ARR_OVERHEAD_NONULLS(1);
+	ArrayType *r;
+	char *o;
+
+	while (p < e) 
+	{
+		b = p;
+		STRSEARCH(p, e-p, *p == '.');
+		nelems ++;
+		nbytes += VARHDRSZ + (p-b);
+		nbytes = INTALIGN(nbytes);
+		p ++;
+	}
+	r = (ArrayType *)palloc(nbytes);
+	SET_VARSIZE(r, nbytes);
+	r->ndim = 1;
+	r->dataoffset = 0;
+	r->elemtype = TEXTOID;
+	*ARR_DIMS(r) = nelems;
+	*ARR_LBOUND(r) = 1;
+
+	p = s;
+	o = ARR_DATA_PTR(r);
+	while (p < e)
+	{
+		b = p;
+		STRSEARCH(p, e-p, *p == '.');
+		SET_VARSIZE(o, VARHDRSZ+(p-b));
+		o = VARDATA(o);
+		memcpy(o, b, p-b);
+		o += INTALIGN(p-b);
+		p ++;
+	}
+
+	PG_RETURN_ARRAYTYPE_P(r);
+}
 
 
 struct uri_info {

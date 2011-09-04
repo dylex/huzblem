@@ -17,7 +17,9 @@ module Uzbl
   , uzblURI, goto
   , status
   , modifyBindings
+  , withDatabase
   , newUzbl
+  , updateBlockScript
   ) where
 
 import Prelude hiding (log)
@@ -38,6 +40,7 @@ import Util
 import Config
 import Database
 import Cookies
+import Scripts
 import URIs
 
 newtype Event = Event String deriving (Eq, Ord)
@@ -89,6 +92,7 @@ data UzblState = UzblState
   , uzblCookies :: Cookies
   , uzblBindings :: Bindings
   , uzblPromptHistory :: Seq.Seq String
+  , uzblBlockScript :: Script -- cached
   }
 
 type UzblT m = ReaderT UzblClient (StateT UzblState m)
@@ -108,6 +112,7 @@ emptyState = UzblState
     { commandCount = Nothing
     }
   , uzblPromptHistory = Seq.empty
+  , uzblBlockScript = ""
   }
 
 clientKey :: UzblClient -> ClientKey
@@ -193,6 +198,9 @@ status x = setVar "status_message" $ ValStr $ "<span color='#404'>" ++ mlEscape 
 modifyBindings :: (Bindings -> Bindings) -> UzblM ()
 modifyBindings f = modify $ \u -> u{ uzblBindings = f $ uzblBindings u }
 
+withDatabase :: (Database -> IO a) -> UzblM a
+withDatabase f = io . f . uzblDatabase . uzblGlobal =<< ask
+
 newUzbl :: Maybe String -> UzblM ()
 newUzbl uri = do
   c <- ask
@@ -202,3 +210,19 @@ newUzbl uri = do
     (uzblCookies u) 
     (Map.insert "parent" (ValInt $ fromIntegral $ clientKey c) $ uzblVariables u) 
     uri
+
+blockScript :: UzblM Script
+blockScript = do
+  bl <- withDatabase blockLists
+  bm <- mapM (\t -> ((,) t) . toEnum =.< getVarInt ("block_" ++ t)) bc
+  bv <- getVarInt "block_verbose"
+  return $ scriptBlock (0 /= bv) bl $ bm ++ map (\t -> (t, BlockNone)) ba
+  where 
+    bc = ["iframe","img","script"]
+    ba = ["input","frame","link"]
+
+updateBlockScript :: UzblM ()
+updateBlockScript = do
+  s <- blockScript
+  modify $ \u -> u{ uzblBlockScript = s }
+

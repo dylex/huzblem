@@ -1,11 +1,13 @@
 module Scripts
-  ( script
+  ( script, Script
   , scriptLinkSelect
   , scriptActivate
   , scriptBlock
   , scriptKillScripts
   ) where
 
+import Control.Monad
+import Data.Char
 import Data.List
 import Data.Maybe
 import System.FilePath
@@ -21,6 +23,10 @@ proc = escape . unwords . words
 
 string :: String -> Script
 string = show -- close enough
+
+bool :: Bool -> Script
+bool False = "false"
+bool True = "true"
 
 load :: FilePath -> Script
 load = proc . Unsafe.unsafeDupablePerformIO . readFile . uzblHome . (<.>"js")
@@ -54,26 +60,18 @@ regexpQuote (c:s)
   | otherwise = s'
   where s' = c:regexpQuote s
 
+-- this function could be made much better (and may assume the list is domain-ordered)
 hostRegexp :: [String] -> String
 hostRegexp l = "^https?://([^/?#]*\\.)?(" ++ intercalate "|" (map regexpQuote l) ++ ")([/?#]|$)"
 
-type BlockList = (Bool, [String])
-
-scriptBlock :: BlockList -> BlockList -> BlockList -> Script
-scriptBlock scr ifr img = proc (
-  " var uzbl_block = { \
-  \   INPUT:{default:true}, \
-  \   FRAME:{default:true}, \
-  \   SCRIPT:{" ++ bv scr ++ "}, \
-  \   IFRAME:{" ++ bv ifr ++ "}, \
-  \   IMG:{" ++ bv img ++ "}, \
-  \   verbose:true \
-  \ };")
-  ++ load "block"
+scriptBlock :: Bool -> ([String], [String]) -> [(String, BlockMode)] -> Script
+scriptBlock verb (bl,tl) bm =
+  proc ("var uzbl_block={" ++ concatMap bf bm ++ "verbose:" ++ bool verb ++ "};") ++ load "block"
   where
-    bv (def, l) = "default:" ++ (if def then "true" else "false") ++ bl l
-    bl [] = ""
-    bl l = ",src:RegExp(" ++ string (hostRegexp l) ++ ",'i')"
+    bf (t,m) = map toUpper t ++ ":{default:" ++ bv (blockMode m) ++ "},"
+    bv (b,l) = bool b ++ br (guard l >> if b then bl else tl)
+    br [] = ""
+    br l = ",src:RegExp(" ++ string (hostRegexp l) ++ ",'i')"
 
 scriptKillScripts :: Script
 scriptKillScripts = load "killscript"

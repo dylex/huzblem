@@ -2,6 +2,7 @@ module Config
   ( Variable
   , Value(..), readValue, showValue
   , Config
+  , BlockMode(..), blockMode
 
   , home, uzblHome
   , defaultConfig
@@ -59,6 +60,19 @@ instance Show Value where
   showsPrec p (ValFloat x) = showsPrec p x
   showsPrec p (ValStr x) = showsPrec p x
 
+data BlockMode 
+  = BlockNone
+  | BlockUntrusted
+  | AllowTrusted
+  | BlockAll
+  deriving (Show, Enum, Bounded)
+
+blockMode :: BlockMode -> (Bool, Bool)
+blockMode BlockNone = (True, False)
+blockMode BlockUntrusted = (True, True)
+blockMode AllowTrusted = (False, True)
+blockMode BlockAll = (False, False)
+
 
 home :: FilePath
 home = Unsafe.unsafeDupablePerformIO $ getEnv "HOME"
@@ -88,8 +102,12 @@ baseConfig = Map.fromAscList
 -- |These variables can be overridden and inherited by new windows.
 defaultConfig :: Config
 defaultConfig = Map.union (Map.fromAscList 
-  [ ("caret_browsing",		ValInt 1)
-  , ("cookie_mode",		ValInt 0)
+  [ ("block_cookie",		ValInt $ fromEnum AllowTrusted)
+  , ("block_iframe",		ValInt $ fromEnum AllowTrusted)
+  , ("block_img",		ValInt $ fromEnum BlockUntrusted)
+  , ("block_script",		ValInt $ fromEnum AllowTrusted)
+  , ("block_verbose",		ValInt 1)
+  , ("caret_browsing",		ValInt 1)
   , ("disable_plugins",		ValInt 1)
   , ("disable_scripts",		ValInt 0)
   , ("enable_spellcheck",	ValInt 0)

@@ -26,6 +26,9 @@ CREATE OR REPLACE FUNCTION domainname_cmp(domainname, domainname) RETURNS int LA
 CREATE OR REPLACE FUNCTION domainname_hash(domainname) RETURNS int LANGUAGE internal STRICT IMMUTABLE AS 'hashtext';
 CREATE OR REPLACE FUNCTION domainname_like(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'textlike';
 CREATE OR REPLACE FUNCTION domainname_nlike(domainname, domainname) RETURNS bool LANGUAGE internal STRICT IMMUTABLE AS 'textnlike';
+CREATE OR REPLACE FUNCTION domainname_catraw(domainname, domainname) RETURNS domainname LANGUAGE internal STRICT IMMUTABLE AS 'textcat';
+
+CREATE OR REPLACE FUNCTION domainname_cat(domainname, domainname) RETURNS domainname LANGUAGE SQL STRICT IMMUTABLE AS 'SELECT textcat($1::text, $2::text)';
 
 CREATE OPERATOR =  (PROCEDURE = domainname_eq, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '=', NEGATOR = '<>', RESTRICT = eqsel, JOIN = eqjoinsel, MERGES, HASHES);
 CREATE OPERATOR <> (PROCEDURE = domainname_ne, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '<>', NEGATOR = '=', RESTRICT = neqsel, JOIN = neqjoinsel);
@@ -36,6 +39,8 @@ CREATE OPERATOR >= (PROCEDURE = domainname_ge, LEFTARG = domainname, RIGHTARG = 
 
 CREATE OPERATOR ~~ (PROCEDURE = domainname_like, LEFTARG = domainname, RIGHTARG = domainname, NEGATOR = '!~~', RESTRICT = likesel, JOIN = likejoinsel);
 CREATE OPERATOR !~~ (PROCEDURE = domainname_nlike, LEFTARG = domainname, RIGHTARG = domainname, NEGATOR = '~~', RESTRICT = nlikesel, JOIN = nlikejoinsel);
+
+CREATE OPERATOR || (PROCEDURE = domainname_cat, LEFTARG = domainname, RIGHTARG = domainname);
 
 CREATE OPERATOR CLASS domainname_ops DEFAULT FOR TYPE domainname USING btree FAMILY text_ops AS
 	OPERATOR 1 <  ,
@@ -61,6 +66,8 @@ CREATE OPERATOR @> (LEFTARG = domainname, RIGHTARG = domainname, PROCEDURE = dom
 	COMMUTATOR = '<@', RESTRICT = contsel, JOIN = contjoinsel);
 CREATE OPERATOR <@ (LEFTARG = domainname, RIGHTARG = domainname, PROCEDURE = domainname_contained,
 	COMMUTATOR = '@>', RESTRICT = contsel, JOIN = contjoinsel);
+
+CREATE OR REPLACE FUNCTION domainname_parts(domainname) RETURNS text[] LANGUAGE C STRICT IMMUTABLE AS 'MODULE_PATHNAME';
 
 
 CREATE TYPE uri_data AS (

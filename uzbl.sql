@@ -1,20 +1,11 @@
-CREATE TABLE uzbl.mark (
-	id	INTEGER PRIMARY KEY,
-	uri	TEXT UNIQUE NOT NULL,
-	created	TIMESTAMP (0) NOT NULL DEFAULT now(),
-	alias	TEXT UNIQUE
+CREATE TABLE browse (
+	id	serial PRIMARY KEY,
+	uri	text UNIQUE NOT NULL,
+	last	timestamp (0) NOT NULL DEFAULT now(),
+	visits	integer NOT NULL DEFAULT 1
 );
 
-CREATE TABLE uzbl.browse (
-	id	SERIAL PRIMARY KEY,
-	uri	TEXT UNIQUE NOT NULL,
-	last	TIMESTAMP (0) NOT NULL DEFAULT now(),
-	visits	INTEGER NOT NULL DEFAULT 1,
-	-- mark	INTEGER REFERENCES mark ON DELETE SET NULL
-);
--- CREATE INDEX browse_mark ON browse (mark) WHERE mark IS NOT NULL;
-
-CREATE OR REPLACE FUNCTION uzbl.browse_add(TEXT) RETURNS INTEGER LANGUAGE plpgsql STRICT AS
+CREATE OR REPLACE FUNCTION browse_add(text) RETURNS integer LANGUAGE plpgsql STRICT AS
 $$
 DECLARE
 	u ALIAS FOR $1;
@@ -34,3 +25,8 @@ BEGIN
 END;
 $$
 ;
+
+CREATE TABLE block (
+	host	domainname PRIMARY KEY,
+	trust	bool
+);
