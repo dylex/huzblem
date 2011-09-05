@@ -36,7 +36,7 @@ rawBind _ = nop
 rawMode :: UzblM ()
 rawMode = do
   f <- getVar "forward_keys"
-  when (f /= Just (ValInt 1)) $ do
+  when (f /= ValInt 1) $ do
     modifyBindings PassThrough
     setVar "forward_keys" $ ValInt 1
     status ""
@@ -116,6 +116,20 @@ promptBlock b = do
     withDatabase $ blockSet d b
     updateBlockScript
 
+favorites :: Int -> UzblM ()
+favorites n = do
+  l <- take n =.< withDatabase browseFavorites
+  setVar "inject_html" $ ValStr $
+    "<html><head><title>Favorite history</title></head><body><table>\
+    \<col width='175px'/><col/><tbody>"
+    ++ concatMap hr l
+    ++ "</tbody></table></html>"
+  where 
+  hr (u, t, l) = "<tr>\
+      \<td>" ++ show l ++ "</td>\
+      \<td><a href='" ++ u ++ "'>" ++ mlEscape (fromMaybe u t) ++ "</a></td>\
+    \</tr>"
+
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
   [ ((0, "$"),	        scroll "horizontal" "end")
@@ -174,6 +188,7 @@ commandBinds = Map.fromAscList $
   , ((modMod1, "b"),	promptBlock (Just False))
   , ((modMod1, "c"),	toggleBlock "cookie")
   , ((modMod1, "f"),	toggleBlock "iframe")
+  , ((modMod1, "h"),	favorites . fromMaybe 40 =<< countMaybe)
   , ((modMod1, "i"),	toggleBlock "img")
   , ((modMod1, "m"),    goto "~/.mozilla/bookmarks.html")
   , ((modMod1, "s"),	toggleBlock "script")

@@ -12,7 +12,7 @@ module Uzbl
   , log, logPrint, debug
   , run, runArgs, runOthers
   , getVar, getVarInt, getVarStr
-  , setVar, setVarMsg
+  , setVar', setVar, setVarMsg
   , resetVar, toggleVar, onOff
   , uzblURI, goto
   , status
@@ -149,20 +149,21 @@ runOthers r a = ask >>= \ct -> liftIO $
   mapM_ (runReaderT $ runArgs r a) . Map.elems . Map.delete (clientKey ct) =<< 
     readMVar (uzblemClients (uzblGlobal ct))
 
-getVar :: Variable -> UzblM (Maybe Value)
-getVar var = Map.lookup var . uzblVariables =.< get
+getVar :: Variable -> UzblM Value
+getVar var = fromMaybe ValNone . Map.lookup var . uzblVariables =.< get
 
 getVarStr :: Variable -> UzblM String
-getVarStr var = maybe "" showValue =.< getVar var
+getVarStr var = showValue =.< getVar var
 
 getVarInt :: Variable -> UzblM Int
-getVarInt var = do
-  v <- getVar var
-  return $ fromMaybe 0 $ vi =<< v
-  where
-    vi (ValInt i) = Just i
-    vi (ValStr s) = readMay s
-    vi (ValFloat f) = Just $ truncate f
+getVarInt var = fromMaybe 0 . vi =.< getVar var where
+  vi ValNone = Nothing
+  vi (ValInt i) = Just i
+  vi (ValStr s) = readMay s
+  vi (ValFloat f) = Just $ truncate f
+
+setVar' :: Variable -> Value -> UzblM ()
+setVar' var val = modify $ \u -> u{ uzblVariables = Map.insert var val (uzblVariables u) }
 
 setVar :: Variable -> Value -> UzblM ()
 setVar var val = run $ "set " ++ var ++ '=' : showValue val
@@ -182,7 +183,7 @@ onOff = [ValInt 1, ValInt 0]
 toggleVar :: Variable -> [Value] -> UzblM ()
 toggleVar var vals = do
   x <- getVar var
-  let y = (!!) vals $ succ $ fromMaybe (-1) $ (`elemIndex` init vals) =<< x
+  let y = (!!) vals $ succ $ fromMaybe (-1) $ elemIndex x $ init vals
   setVarMsg var y
 
 uzblURI :: UzblM String
@@ -218,7 +219,7 @@ blockScript = do
   bv <- getVarInt "block_verbose"
   return $ scriptBlock (0 /= bv) bl $ bm ++ map (\t -> (t, BlockNone)) ba
   where 
-    bc = ["iframe","img","script"]
+    bc = ["iframe","img","script","embed"]
     ba = ["input","frame","link"]
 
 updateBlockScript :: UzblM ()

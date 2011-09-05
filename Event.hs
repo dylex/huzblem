@@ -36,8 +36,9 @@ commandExecuted ("add_cookie":args) = maybe badArgs ac $ argCookie args where
 commandExecuted _ = nop
 
 variableSet :: [String] -> UzblM ()
+variableSet ["inject_html",_,_] = nop
 variableSet [var,typ,sval] | Just val <- readValue typ sval = do
-  modify $ \u -> u{ uzblVariables = Map.insert var val (uzblVariables u) }
+  setVar' var val
   when ("block_" `isPrefixOf` var) updateBlockScript
 variableSet _ = badArgs
 
@@ -81,7 +82,8 @@ addCookie args = maybe badArgs ac $ argCookie args where
 
 loadStart :: [String] -> UzblM ()
 loadStart [u] = do
-  variableSet ["uri","str",u] -- fake it here, since we don't get the event otherwise
+  setVar' "uri" (ValStr u) -- fake it here, since we don't get the event otherwise
+  setVar' "TITLE" ValNone
   setVar "status_load" $ ValStr "wait"
   status ""
 loadStart _ = badArgs
@@ -97,7 +99,9 @@ loadCommit _ = badArgs
 loadFinish :: [String] -> UzblM ()
 loadFinish [u] = do
   setVar "status_load" $ ValStr "" -- "done"
-  withDatabase $ browseAdd u
+  t <- getVar "TITLE"
+  unless ("file:///" `isPrefixOf` u || "about:" `isPrefixOf` u) $
+    withDatabase $ browseAdd u $ case t of { ValStr s -> Just s ; _ -> Nothing }
 loadFinish _ = badArgs
 
 loadProgress :: [String] -> UzblM ()
@@ -112,6 +116,15 @@ loadProgress [sp]
       where h = showHex x
     sc = sh . (`div`100) . (255*)
 loadProgress _ = badArgs
+
+titleChanged :: [String] -> UzblM ()
+titleChanged ["(no title)"] = do
+  setVar' "TITLE" ValNone
+titleChanged [t] = do
+  u <- uzblURI
+  setVar' "TITLE" (ValStr t) 
+  withDatabase $ browseSetTitle u t
+titleChanged _ = badArgs
 
 linkHover :: [String] -> UzblM ()
 linkHover [u] = setVar "link_hovering" $ ValStr u
@@ -136,6 +149,7 @@ events = Map.fromAscList $ map (first Event) $
   , ("LOAD_START",	loadStart)
   , ("NEW_WINDOW",	newWindow)
   , ("SOCKET_SET",	socketSet) 
+  , ("TITLE_CHANGED",	titleChanged) 
   , ("VARIABLE_SET",	variableSet) 
   ]
 

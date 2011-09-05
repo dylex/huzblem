@@ -4,6 +4,8 @@ module Database
   , databaseClose
   , browseAdd
   , browseFind
+  , browseFavorites
+  , browseSetTitle
   , blockTest
   , blockLists
   , blockSet
@@ -13,6 +15,7 @@ import Control.Concurrent.MVar
 import Control.Monad
 import Data.Array
 import Data.Maybe
+import Data.Time.LocalTime (LocalTime)
 
 import Database.HDBC
 import Database.HDBC.PostgreSQL
@@ -29,24 +32,35 @@ data Database = Database
 data QueryType
   = BrowseAdd
   | BrowseFind
+  | BrowseFavorites
+  | BrowseSetTitle
   | BlockTest
   | BlockList
   | BlockSet
   | BlockAdd
-  deriving (Eq, Ord, Bounded, Enum, Ix)
+  deriving (Show, Eq, Ord, Bounded, Enum, Ix)
 
 queries :: [String]
 queries = 
-  [ "SELECT browse_add(?)"
-  , "SELECT uri FROM browse WHERE uri LIKE '%' || ? || '%' ORDER BY last DESC LIMIT 1"
+  [ "SELECT browse_add(?, ?)"
+  , "SELECT uri FROM browse WHERE text(uri) LIKE '%' || ? || '%' ORDER BY last DESC LIMIT 1"
+  , "SELECT text(uri), title, last FROM (SELECT uri, title, last, \
+    \   sum(visits) OVER d as v, row_number() OVER d AS i \
+    \ FROM browse WINDOW d AS (\
+    \   PARTITION BY (uri).domain ORDER BY last DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING \
+    \ )) b WHERE i = 1 ORDER BY v DESC"
+  , "UPDATE browse SET title = ? WHERE uri = ?::uri"
   , "SELECT trust FROM block WHERE host = ANY (domainname_parents(?))"
   , "SELECT host FROM block WHERE trust = ? ORDER BY host"
   , "UPDATE block SET trust = ? WHERE host = ?"
   , "INSERT INTO block (trust, host) VALUES (?, ?)"
   ]
 
-withQuery :: Database -> QueryType -> (Statement -> IO a) -> IO a
-withQuery d qt f = withMVar (databaseQueries d ! qt) $ \q -> do
+withQuery' :: QueryType -> (Statement -> IO a) -> Database -> IO a
+withQuery' qt f d = withMVar (databaseQueries d ! qt) f
+
+withQuery :: QueryType -> (Statement -> IO a) -> Database -> IO a
+withQuery qt f = withQuery' qt $ \q -> do
   r <- f q
   finish q
   return r
@@ -54,21 +68,29 @@ withQuery d qt f = withMVar (databaseQueries d ! qt) $ \q -> do
 execute_ :: Statement -> [SqlValue] -> IO ()
 execute_ s = void . execute s
 
-browseAdd :: String -> Database -> IO ()
-browseAdd u d = withQuery d BrowseAdd $ (`execute_` [SqlString u])
+browseAdd :: String -> Maybe String -> Database -> IO ()
+browseAdd u t = withQuery BrowseAdd (`execute_` [SqlString u, toSql t])
 
 browseFind :: String -> Database -> IO (Maybe String)
-browseFind u d = withQuery d BrowseFind $ \q -> do
+browseFind u = withQuery BrowseFind $ \q -> do
   execute_ q [SqlString u]
   fmap (fromSql . head) =.< fetchRow q
 
+browseFavorites :: Database -> IO [(String, Maybe String, LocalTime)]
+browseFavorites = withQuery' BrowseFavorites $ \q -> do
+  execute_ q []
+  map (\[u,t,l] -> (fromSql u, fromSql t, fromSql l)) =.< fetchAllRows q
+
+browseSetTitle :: String -> String -> Database -> IO ()
+browseSetTitle u t = withQuery BrowseSetTitle (`execute_` [SqlString u, SqlString t])
+
 blockTest :: String -> Database -> IO (Maybe Bool)
-blockTest h d = withQuery d BlockTest $ \q -> do
+blockTest h = withQuery BlockTest $ \q -> do
   execute_ q [SqlString h]
   fmap (fromSql . head) =.< fetchRow q
 
 blockLists :: Database -> IO ([String], [String])
-blockLists d = withQuery d BlockList $ \q ->
+blockLists = withQuery BlockList $ \q ->
   let bl t = do
         execute_ q [SqlBool t]
         mapMaybe (fromSql . head) =.< fetchAllRows' q
@@ -76,8 +98,8 @@ blockLists d = withQuery d BlockList $ \q ->
 
 blockSet :: String -> Maybe Bool -> Database -> IO ()
 blockSet h t d = do
-  r <- withQuery d BlockSet e
-  when (r == 0) $ withQuery d BlockAdd $ void . e
+  r <- withQuery BlockSet e d
+  when (r == 0) $ withQuery BlockAdd (void . e) d
   where e q = execute q [toSql t, SqlString h]
 
 databaseOpen :: IO Database

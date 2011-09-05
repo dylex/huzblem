@@ -75,9 +75,10 @@ argCookie _ = Nothing
 cookieExpires :: Cookie -> String
 cookieExpires = maybe "" ((show :: Integer -> String) . round) . cookieExpire
 
-writeCookie :: Cookie -> String
-writeCookie = intercalate "\t" . wc where
-  wc c = 
+writeCookie :: Cookie -> Maybe String
+writeCookie Cookie{ cookieExpire = Nothing } = Nothing
+writeCookie c = Just $ intercalate "\t" wc where
+  wc = 
     [ cookieDomain c
     , tf (headMay (cookieDomain c) == Just '.')
     , cookiePath c
@@ -102,7 +103,7 @@ loadCookies :: FilePath -> IO Cookies
 loadCookies = Set.fromDistinctAscList .=< loadCookiesWith parseCookie
 
 saveCookies :: FilePath -> Cookies -> IO ()
-saveCookies f = writeFile f . unlines . map writeCookie . Set.toAscList
+saveCookies f = writeFile f . unlines . mapMaybe writeCookie . Set.toAscList
 
 cookiesArgs :: Cookies -> [[String]]
 cookiesArgs = map cookieArgs . Set.toList

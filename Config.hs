@@ -27,13 +27,15 @@ import Cookies
 type Variable = String
 
 data Value 
-  = ValInt Int
+  = ValNone
+  | ValInt Int
   | ValFloat Float
   | ValStr String
 
 type Config = Map.Map Variable Value
 
 instance Eq Value where
+  ValNone    == ValNone    = True
   ValInt   x == ValInt   y = x == y
   ValInt   x == ValFloat y = fromIntegral x == y
   ValInt   x == ValStr   y = Just x == readMay y
@@ -43,19 +45,23 @@ instance Eq Value where
   ValStr   x == ValInt   y = readMay x == Just y
   ValStr   x == ValFloat y = readMay x == Just y
   ValStr   x == ValStr   y = x == y
+  _          == _          = False
 
 readValue :: String -> String -> Maybe Value
+readValue "none" _ = Just ValNone
 readValue "int" s = fmap ValInt $ readMay s
 readValue "float" s = fmap ValFloat $ readMay s
 readValue "str" s = Just $ ValStr s
 readValue _ _ = Nothing
 
 showValue :: Value -> String
+showValue ValNone = ""
 showValue (ValInt i) = show i
 showValue (ValFloat f) = show f
 showValue (ValStr s) = s
 
 instance Show Value where
+  showsPrec _ ValNone = id
   showsPrec p (ValInt x) = showsPrec p x
   showsPrec p (ValFloat x) = showsPrec p x
   showsPrec p (ValStr x) = showsPrec p x
@@ -103,6 +109,7 @@ baseConfig = Map.fromAscList
 defaultConfig :: Config
 defaultConfig = Map.union (Map.fromAscList 
   [ ("block_cookie",		ValInt $ fromEnum AllowTrusted)
+  , ("block_embed",		ValInt $ fromEnum AllowTrusted)
   , ("block_iframe",		ValInt $ fromEnum AllowTrusted)
   , ("block_img",		ValInt $ fromEnum BlockUntrusted)
   , ("block_script",		ValInt $ fromEnum AllowTrusted)
