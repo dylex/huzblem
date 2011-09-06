@@ -84,6 +84,7 @@ loadStart :: [String] -> UzblM ()
 loadStart [u] = do
   setVar' "uri" (ValStr u) -- fake it here, since we don't get the event otherwise
   setVar' "TITLE" ValNone
+  setVar' "SELECTED_URI" ValNone
   setVar "status_load" $ ValStr "wait"
   status ""
 loadStart _ = badArgs
@@ -100,7 +101,8 @@ loadFinish :: [String] -> UzblM ()
 loadFinish [u] = do
   setVar "status_load" $ ValStr "" -- "done"
   t <- getVar "TITLE"
-  unless ("file:///" `isPrefixOf` u || "about:" `isPrefixOf` u) $
+  p <- getVarInt "enable_private"
+  unless (p /= 0 || "file:///" `isPrefixOf` u || "about:" `isPrefixOf` u) $
     withDatabase $ browseAdd u $ case t of { ValStr s -> Just s ; _ -> Nothing }
 loadFinish _ = badArgs
 
@@ -127,17 +129,22 @@ titleChanged [t] = do
 titleChanged _ = badArgs
 
 linkHover :: [String] -> UzblM ()
-linkHover [u] = setVar "link_hovering" $ ValStr u
+linkHover [u] = setVar' "SELECTED_URI" $ ValStr u
 linkHover _ = badArgs
 
 linkUnHover :: [String] -> UzblM ()
-linkUnHover _ = setVar "link_hovering" $ ValStr ""
+linkUnHover _ = setVar' "SELECTED_URI" ValNone
+
+downloadComplete :: [String] -> UzblM ()
+downloadComplete [f] = io $ putStrLn $ "download complete: " ++ f
+downloadComplete _ = badArgs
 
 events :: Map.Map Event ([String] -> UzblM ())
 events = Map.fromAscList $ map (first Event) $ 
   [ ("ADD_COOKIE",	addCookie)
   , ("COMMAND_ERROR",	commandError)
   , ("COMMAND_EXECUTED",commandExecuted)
+  , ("DOWNLOAD_COMPLETE",downloadComplete)
   , ("FIFO_SET",	fifoSet)
   , ("FORM_ACTIVE",	\_ -> rawMode)
   , ("KEY_PRESS",	keyPress)

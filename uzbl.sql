@@ -5,7 +5,7 @@ CREATE TABLE browse (
 	last	timestamp (0) NOT NULL DEFAULT now(),
 	visits	integer NOT NULL DEFAULT 1
 );
--- CREATE INDEX browse_domain_idx ON browse (((uri).domain));
+CREATE INDEX browse_domain_idx ON browse (((uri).domain));
 
 CREATE OR REPLACE FUNCTION browse_add(uri, text) RETURNS integer LANGUAGE plpgsql STRICT AS
 $$
@@ -30,6 +30,6 @@ $$
 ;
 
 CREATE TABLE block (
-	host	domainname PRIMARY KEY,
+	domain	domainname PRIMARY KEY,
 	trust	bool
 );

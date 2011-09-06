@@ -58,8 +58,12 @@ prompt p i e = promptComplete p i (const $ return Nothing) e
 
 button2 :: UzblM ()
 button2 = do
-  l <- getVarStr "link_hovering"
-  unless (null l) $ newUzbl $ Just l
+  l <- getVarStr "SELECTED_URI"
+  if null l
+    then nop
+    else if takeWhile (/= '.') (reverse l) `elem` map reverse ["bz2","flac","gif","gz","jpeg","jpg","mp3","pdf","png","xz","zip"]
+      then runArgs "download" [l]
+      else newUzbl $ Just l
 
 scroll :: String -> String -> UzblM ()
 scroll d s = runArgs "scroll" [d,s]
@@ -188,9 +192,10 @@ commandBinds = Map.fromAscList $
   , ((modMod1, "b"),	promptBlock (Just False))
   , ((modMod1, "c"),	toggleBlock "cookie")
   , ((modMod1, "f"),	toggleBlock "iframe")
-  , ((modMod1, "h"),	favorites . fromMaybe 40 =<< countMaybe)
+  , ((modMod1, "h"),	favorites . fromMaybe 50 =<< countMaybe)
   , ((modMod1, "i"),	toggleBlock "img")
   , ((modMod1, "m"),    goto "~/.mozilla/bookmarks.html")
+  , ((modMod1, "p"),    toggleOrCount "enable_private" onOff)
   , ((modMod1, "s"),	toggleBlock "script")
   , ((modMod1, "t"),	promptBlock (Just True))
   , ((modMod1, "u"),	promptBlock Nothing)

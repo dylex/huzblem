@@ -29,6 +29,7 @@ CREATE OR REPLACE FUNCTION domainname_nlike(domainname, domainname) RETURNS bool
 CREATE OR REPLACE FUNCTION domainname_catraw(domainname, domainname) RETURNS domainname LANGUAGE internal STRICT IMMUTABLE AS 'textcat';
 
 CREATE OR REPLACE FUNCTION domainname_cat(domainname, domainname) RETURNS domainname LANGUAGE SQL STRICT IMMUTABLE AS 'SELECT textcat($1::text, $2::text)::domainname';
+CREATE OR REPLACE FUNCTION length(domainname) RETURNS integer LANGUAGE internal STRICT IMMUTABLE AS 'textlen';
 
 CREATE OPERATOR =  (PROCEDURE = domainname_eq, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '=', NEGATOR = '<>', RESTRICT = eqsel, JOIN = eqjoinsel, MERGES, HASHES);
 CREATE OPERATOR <> (PROCEDURE = domainname_ne, LEFTARG = domainname, RIGHTARG = domainname, COMMUTATOR = '<>', NEGATOR = '=', RESTRICT = neqsel, JOIN = neqjoinsel);

@@ -52,6 +52,8 @@ readValue "none" _ = Just ValNone
 readValue "int" s = fmap ValInt $ readMay s
 readValue "float" s = fmap ValFloat $ readMay s
 readValue "str" s = Just $ ValStr s
+readValue "" "" = Just ValNone
+readValue "" s = Just $ maybe (maybe (ValStr s) ValFloat (readMay s)) ValInt (readMay s)
 readValue _ _ = Nothing
 
 showValue :: Value -> String
@@ -117,6 +119,9 @@ defaultConfig = Map.union (Map.fromAscList
   , ("caret_browsing",		ValInt 1)
   , ("disable_plugins",		ValInt 1)
   , ("disable_scripts",		ValInt 0)
+  , ("download_dir",            ValStr $ home </> "tmp/uzbl")
+  , ("download_handler",        ValStr $ "sync_spawn " ++ uzblHome "download" ++ " \\@download_dir")
+  , ("enable_private",	        ValInt 0)
   , ("enable_spellcheck",	ValInt 0)
   , ("shell_cmd",		ValStr $ uzblHome "shell")
   , ("show_status",		ValInt 1)
@@ -131,7 +136,7 @@ runUzbl sock cookies config uri = do
   let args = ["--connect-socket", sock, "--config", "-"] ++ maybe [] (("-u":) . return) uri
   print args
   (Just h, _, _, pid) <- createProcess (proc "uzbl-core" args){ std_in = CreatePipe }
-  mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ '=' : showValue v) $ Map.toList $ Map.union baseConfig config
+  mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ '=' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
   mapM_ (\a -> hPutStrLn h $ unwords $ "add_cookie" : map quote a) $ cookiesArgs cookies
   hClose h
   void $ forkIO $ void $ waitForProcess pid

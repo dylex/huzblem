@@ -31,7 +31,8 @@ infixr 5 ?=
 
 rewrites :: Map.Map String (String -> String)
 rewrites = Map.fromAscList
-  [ ("dd",      ("http://duckduckgo.com/?kp=-1&q=" ?=))
+  [ ("amg",     ("http://www.allmusic.com/search/artist/" ?=))
+  , ("dd",      ("http://duckduckgo.com/?kp=-1&q=" ?=))
   , ("dict",	("http://dictionary.reference.com/search?q=" ?=))
   , ("fm",	("http://www.freshmeat.net/search/?q=" ?=))
   , ("g",	("http://www.google.com/search?q=" ?=))
@@ -42,6 +43,7 @@ rewrites = Map.fromAscList
   , ("hoogle",	("http://haskell.org/hoogle/?q=" ?=))
   , ("imdb",	("http://imdb.com/Find?" ?=))
   , ("math",	("http://mathworld.wolfram.com/search/?query=" ?=))
+  , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
   , ("rfc",	\q -> "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt")
   , ("s",	("http://www.scroogle.org/cgi-bin/nbbw.cgi?Gw=" ?=))

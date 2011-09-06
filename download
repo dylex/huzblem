@@ -1,0 +1,28 @@
+#!/bin/bash
+dir=$1 ; shift
+uri=$1
+suggested_filename=${2:-${1##*/}}
+content_type=$3
+total_size=$4
+path=$5
+
+if [[ -z $path ]] ; then
+	path=${suggested_filename//[^()+,-.0-:@-Za-z]/_}
+fi
+
+if [[ -n $path && $path != /* ]] ; then
+	path=$dir/$path
+fi
+
+base=$path
+count=1
+while [[ -e $path ]] ; do
+	path=$base.$count
+	count=$((count+1))
+	if [[ $count -gt 9 ]] ; then
+		exit 1
+	fi
+done
+
+#echo "$*: $path" >> ~/.uzbl/downloads
+echo -n $path

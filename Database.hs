@@ -50,10 +50,10 @@ queries =
     \   PARTITION BY (uri).domain ORDER BY last DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING \
     \ )) b WHERE i = 1 ORDER BY v DESC"
   , "UPDATE browse SET title = ? WHERE uri = ?::uri"
-  , "SELECT trust FROM block WHERE host = ANY (domainname_parents(?))"
-  , "SELECT host FROM block WHERE trust = ? ORDER BY host"
-  , "UPDATE block SET trust = ? WHERE host = ?"
-  , "INSERT INTO block (trust, host) VALUES (?, ?)"
+  , "SELECT trust FROM block WHERE domain = ANY (domainname_parents(?)) ORDER BY length(domain) DESC LIMIT 1"
+  , "SELECT domain FROM block WHERE trust = ? ORDER BY domain"
+  , "UPDATE block SET trust = ? WHERE domain = ?"
+  , "INSERT INTO block (trust, domain) VALUES (?, ?)"
   ]
 
 withQuery' :: QueryType -> (Statement -> IO a) -> Database -> IO a
@@ -87,7 +87,7 @@ browseSetTitle u t = withQuery BrowseSetTitle (`execute_` [SqlString u, SqlStrin
 blockTest :: String -> Database -> IO (Maybe Bool)
 blockTest h = withQuery BlockTest $ \q -> do
   execute_ q [SqlString h]
-  fmap (fromSql . head) =.< fetchRow q
+  (fromSql . head =<<) =.< fetchRow q
 
 blockLists :: Database -> IO ([String], [String])
 blockLists = withQuery BlockList $ \q ->

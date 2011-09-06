@@ -18,6 +18,7 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Error
+import System.Posix.Env as Env
 
 import Util
 import Config
@@ -31,33 +32,40 @@ removeFile_ f = void $ tryJust (\e -> guard (isDoesNotExistError e) >. ()) $ rem
 
 data Options = Options
   { optionSocket :: FilePath
-  , optionConfig :: FilePath
   , optionCookies :: Maybe FilePath
   , optionDebug :: Bool
+  , optionConfig :: Config
   }
 
 defaultOptions :: Options
 defaultOptions = Options
   { optionSocket = uzblHome ".huzblem"
-  , optionConfig = uzblHome "config"
   , optionCookies = Just $ uzblHome "cookies" -- home </> ".elinks/cookies"
   , optionDebug = False
+  , optionConfig = defaultConfig
   }
+
+setConfig :: String -> Options -> Options
+setConfig c = case break ('=' ==) c of
+  ("","") -> id
+  (v,'=':s) | Just x <- readValue "" s -> oc $ Map.insert v x
+  (v,_) -> oc $ Map.delete v
+  where oc f o = o{ optionConfig = f (optionConfig o) }
 
 options :: [GetOpt.OptDescr (Options -> Options)]
 options = 
   [ GetOpt.Option "s" ["socket"] 
       (GetOpt.ReqArg (\s o -> o{ optionSocket = if isAbsolute s then s else optionSocket o ++ '-' : s }) "PATH") 
       ("path or suffix for event manager socket [" ++ optionSocket defaultOptions ++ "]")
-  , GetOpt.Option "c" ["config"]
-      (GetOpt.ReqArg (\s o -> o{ optionConfig = s }) "FILE") 
-      ("Path to config file [" ++ optionConfig defaultOptions ++ "]")
   , GetOpt.Option "" ["cookies"]
       (GetOpt.OptArg (\s o -> o{ optionCookies = s }) "FILE") 
       ("Load and use cookies from FILE [" ++ fromMaybe "NONE" (optionCookies defaultOptions) ++ "]")
   , GetOpt.Option "d" ["debug"]
       (GetOpt.NoArg (\o -> o{ optionDebug = True }))
       ("Print out more log messages")
+  , GetOpt.Option "s" ["set"]
+      (GetOpt.ReqArg setConfig "VAR[=VALUE]")
+      ("Set (or clear) a configuration variable")
   ]
 
 main :: IO ()
@@ -69,6 +77,8 @@ main = do
       mapM_ putStr err
       putStr $ GetOpt.usageInfo "huzblem [OPTIONS] [URI ...]" options
       exitFailure
+  path <- Env.getEnv "PATH"
+  setEnv "PATH" (uzblHome "" ++ maybe "" (':':) path) True
 
   s <- socket AF_UNIX Stream defaultProtocol
   let sock = optionSocket opts
@@ -94,7 +104,7 @@ main = do
 
   let uu [] = [Nothing]
       uu l = map Just l
-  mapM_ (runUzbl sock cookies defaultConfig) (uu urls)
+  mapM_ (runUzbl sock cookies (optionConfig opts)) (uu urls)
 
   unless me exitSuccess
 
