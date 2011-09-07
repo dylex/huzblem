@@ -6,6 +6,7 @@ module Util
   , first, second
 
   , stripLast
+  , breakStrip
   , splitOn
   , quotedWord, quotedWords
   , escape, quote
@@ -51,6 +52,9 @@ stripLast x [y] | x == y = Just []
 stripLast x (c:l) = fmap (c:) $ stripLast x l
 stripLast _ _ = Nothing
 
+breakStrip :: (a -> Bool) -> [a] -> ([a],[a])
+breakStrip f = second (dropWhile f) . break f
+
 splitOn :: (a -> Bool) -> [a] -> [[a]]
 splitOn _ [] = []
 splitOn f l = case break f l of
@@ -81,7 +85,7 @@ escape (c:s)
   where s' = c:escape s
 
 quote :: String -> String
-quote s = '"' : q s where
+quote = ('"' :) . q where
   q "" = "\""
   q (c:s)
     | c `elem` "\"@\\" = '\\':s'

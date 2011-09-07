@@ -1,12 +1,14 @@
 module Prompt
   ( promptMode
   , promptBind
+  , completerSet
   ) where
 
 import Data.Char
 import Data.List
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
 import Data.Tuple
 
 import Safe
@@ -90,7 +92,7 @@ complete = do
   u@UzblState{ uzblBindings = p } <- get
   maybe nop (\c ->
       put u{ uzblBindings = p{ promptInput = unInput c } }) 
-    =<< promptCompletion p (input (promptInput p))
+    =<< promptCompleter p (input (promptInput p))
 
 promptBinds :: Map.Map ModKey (UzblM ())
 promptBinds = Map.fromAscList 
@@ -128,12 +130,21 @@ promptBind mk = do
   bindMap promptBinds (promptInsert . snd) mk
   promptUpdate
 
-promptMode :: String -> String -> (String -> UzblM (Maybe String)) -> (Maybe String -> UzblM ()) -> UzblM ()
+promptMode :: String -> String -> Completer -> (Maybe String -> UzblM ()) -> UzblM ()
 promptMode p i c e = do
   modifyBindings $ const $ Prompt
     { promptPrompt = p
     , promptInput = unInput i
-    , promptCompletion = c
+    , promptCompleter = c
     , promptExec = e
     }
   promptUpdate
+
+completerSet :: Set.Set String -> String -> Maybe String
+completerSet s x
+  | e = Just x
+  | Just (y,_) <- Set.minView r
+  , x `isPrefixOf` y = Just y
+  | otherwise = Nothing
+  where
+    (_,e,r) = Set.splitMember x s

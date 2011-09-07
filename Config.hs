@@ -7,16 +7,21 @@ module Config
   , home, uzblHome
   , defaultConfig
   , stylesheets
+  , useragents
   , runUzbl
+  , commands
   ) where
 
 import Control.Concurrent
 import Control.Monad
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Time as Time
 import System.Environment
 import System.FilePath
 import System.IO
 import qualified System.IO.Unsafe as Unsafe
+import System.Locale (defaultTimeLocale)
 import System.Process
 
 import Safe
@@ -91,6 +96,16 @@ uzblHome = ((home </> ".uzbl") </>)
 stylesheets :: [Value]
 stylesheets = map (ValStr . ("file://" ++) . uzblHome) ["plain.css", "style.css"]
 
+useragents :: [Value]
+useragents = map ValStr 
+  [ "Uzbl (X11; " ++ uname ++ ") WebKit/@{WEBKIT_MAJOR}.@{WEBKIT_MINOR}"
+  , "Mozilla/5.0 (X11; " ++ uname ++ ") AppleWebKit/555 (KHTML, like Gecko) Safari/555"
+  , "Mozilla/5.0 (X11; " ++ uname ++ "; rv:5.5) Gecko/" ++ today ++ " Firefox/5.5"
+  ]
+  where 
+    uname = maybe "unknown" (head . lines) $ Unsafe.unsafeDupablePerformIO $ capture "uname" ["-sm"]
+    today = Time.formatTime defaultTimeLocale "%Y%m%d" $ Time.utctDay $ Unsafe.unsafeDupablePerformIO $ Time.getCurrentTime
+
 -- |These variables are reset on start.  Any setting containing an expansion must be here.
 baseConfig :: Config
 baseConfig = Map.fromAscList
@@ -127,7 +142,7 @@ defaultConfig = Map.union (Map.fromAscList
   , ("show_status",		ValInt 1)
   , ("status_top",		ValInt 0)
   , ("stylesheet_uri",		head stylesheets)
-  , ("useragent",		ValStr $ uzblHome "Uzbl (Webkit @{WEBKIT_MAJOR}.@{WEBKIT_MINOR}) (@(+uname -sm)@ [@ARCH_UZBL])")
+  , ("useragent",		head useragents)
   , ("zoom_type",		ValInt 0)
   ]) baseConfig
 
@@ -140,3 +155,56 @@ runUzbl sock cookies config uri = do
   mapM_ (\a -> hPutStrLn h $ unwords $ "add_cookie" : map quote a) $ cookiesArgs cookies
   hClose h
   void $ forkIO $ void $ waitForProcess pid
+
+commands :: Set.Set String
+commands = Set.fromAscList
+  [ "add_cookie"
+  , "back"
+  , "chain"
+  , "clear_cookies"
+  , "dehilight"
+  , "delete_cookie"
+  , "download"
+  , "dump_config"
+  , "dump_config_as_events"
+  , "event"
+  , "exit"
+  , "forward"
+  , "hardcopy"
+  , "include"
+  , "js"
+  , "menu_add"
+  , "menu_editable_add"
+  , "menu_editable_remove"
+  , "menu_editable_separator"
+  , "menu_image_add"
+  , "menu_image_remove"
+  , "menu_image_separator"
+  , "menu_link_add"
+  , "menu_link_remove"
+  , "menu_link_separator"
+  , "menu_remove"
+  , "menu_separator"
+  , "print"
+  , "reload"
+  , "reload_ign_cache"
+  , "request"
+  , "script"
+  , "scroll"
+  , "search"
+  , "search_clear"
+  , "search_reverse"
+  , "set"
+  , "sh"
+  , "show_inspector"
+  , "spawn"
+  , "stop"
+  , "sync_sh"
+  , "sync_spawn"
+  , "sync_spawn_exec"
+  , "toggle_status"
+  , "toggle_zoom_type"
+  , "uri"
+  , "zoom_in"
+  , "zoom_out"
+  ]

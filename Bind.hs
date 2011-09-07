@@ -7,6 +7,7 @@ module Bind
 import Prelude hiding (log)
 
 import Control.Monad
+import Data.Char
 import qualified Data.Map as Map
 import Data.Maybe
 
@@ -55,6 +56,16 @@ promptComplete p i c e = promptMode p i c ((>>) commandMode . maybe nop e)
 
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
 prompt p i e = promptComplete p i (const $ return Nothing) e
+
+commandCompleter :: Completer
+commandCompleter = f . breakStrip isSpace where
+  f (c,"") = return $ completerSet commands c
+  f ("set",vv) | (v,"") <- breakStrip (\x -> '=' == x || isSpace x) vv = do
+    vl <- uzblVariables =.< get
+    return $ maybe
+      ((\x -> "set " ++ x ++ "=") =.< completerSet (Map.keysSet vl) v)
+      (\x -> Just $ "set " ++ v ++ "=" ++ showValue x) $ Map.lookup v vl
+  f _ = return Nothing
 
 button2 :: UzblM ()
 button2 = do
@@ -145,7 +156,7 @@ commandBinds = Map.fromAscList $
   ] ++ 
   [ ((0, show i),       digit i) | i <- [1..9]
   ] ++
-  [ ((0, ":"),	        prompt ":" "" $ \c -> run c)
+  [ ((0, ":"),	        promptComplete ":" "" commandCompleter $ \c -> run c)
   , ((0, "="),		setVar "zoom_level" (ValFloat 1))
   , ((0, "?"),          prompt "?" "" $ search True)
   , ((0, "@"),		toggleOrCount "caret_browsing" onOff)
@@ -189,6 +200,7 @@ commandBinds = Map.fromAscList $
   , ((0, "z"),		run "stop")
   , ((0, "{"),	        toggleOrCount "enable_spellcheck" onOff)
   , ((modMod1, "C"),	cookieSave)
+  , ((modMod1, "a"),	toggleOrCount "useragent" useragents) -- broken due to expansions...
   , ((modMod1, "b"),	promptBlock (Just False))
   , ((modMod1, "c"),	toggleBlock "cookie")
   , ((modMod1, "f"),	toggleBlock "iframe")

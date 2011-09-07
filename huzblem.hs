@@ -45,12 +45,14 @@ defaultOptions = Options
   , optionConfig = defaultConfig
   }
 
+optionConfig' :: (Config -> Config) -> Options -> Options
+optionConfig' f o = o{ optionConfig = f (optionConfig o) }
+
 setConfig :: String -> Options -> Options
 setConfig c = case break ('=' ==) c of
   ("","") -> id
-  (v,'=':s) | Just x <- readValue "" s -> oc $ Map.insert v x
-  (v,_) -> oc $ Map.delete v
-  where oc f o = o{ optionConfig = f (optionConfig o) }
+  (v,'=':s) | Just x <- readValue "" s -> optionConfig' $ Map.insert v x
+  (v,_) -> optionConfig' $ Map.delete v
 
 options :: [GetOpt.OptDescr (Options -> Options)]
 options = 
@@ -66,6 +68,9 @@ options =
   , GetOpt.Option "s" ["set"]
       (GetOpt.ReqArg setConfig "VAR[=VALUE]")
       ("Set (or clear) a configuration variable")
+  , GetOpt.Option "p" ["private"]
+      (GetOpt.NoArg (optionConfig' $ Map.insert "enable_private" (ValInt 1)))
+      ("Private mode (equivalent to -s enable_private=1)")
   ]
 
 main :: IO ()

@@ -5,7 +5,8 @@ module Uzbl
   , UzblClient(..), clientKey
   , UzblState(..), emptyState
   , UzblM
-  , Bindings(..), Input
+  , Bindings(..)
+  , Input, Completer
 
   , ask, modify, get, put
   , io
@@ -54,6 +55,8 @@ type Clients = Map.Map ClientKey UzblClient
 
 type Input = ([Char],String) -- zipper
 
+type Completer = String -> UzblM (Maybe String)
+
 data Bindings
   = Command
     { commandCount :: Maybe Int
@@ -64,7 +67,7 @@ data Bindings
   | Prompt 
     { promptPrompt :: !String
     , promptInput :: !Input
-    , promptCompletion :: String -> UzblM (Maybe String)
+    , promptCompleter :: Completer
     , promptExec :: Maybe String -> UzblM ()
     }
 
