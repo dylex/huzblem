@@ -4,6 +4,7 @@ module Scripts
   , scriptActivate
   , scriptBlock
   , scriptKillScripts
+  , scriptKeydown
   ) where
 
 import Control.Monad
@@ -15,10 +16,11 @@ import qualified System.IO.Unsafe as Unsafe
 
 import Config
 import Util
+import Keys
 
 type Script = String
 
-proc :: Script -> Script
+proc :: String -> Script
 proc = escape . unwords . words
 
 string :: String -> Script
@@ -75,3 +77,11 @@ scriptBlock verb (bl,tl) bm =
 
 scriptKillScripts :: Script
 scriptKillScripts = load "killscript"
+
+scriptKeydown :: ModKey -> Script
+scriptKeydown (m,k) = proc $ 
+  " var event = document.createEvent('KeyboardEvent'); \
+  \ event.initKeyboardEvent('keydown',false,false,null," ++ string k ++ ",0" ++ concatMap b ["Ctrl","Alt","Shift","Mod1"] ++ ",false); \
+  \ document.dispatchEvent(event); \
+  \ undefined;"
+  where b = (',':) . bool . (`modifierTest` m) 

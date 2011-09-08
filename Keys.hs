@@ -1,11 +1,12 @@
 module Keys 
   ( Key, Mod, ModKey
   , readModifiers
-  , modCtrl, modMod1, modMod4
+  , modifierTest
+  , modShift, modCtrl, modMod1, modMod4
   , bindMap
   ) where
 
-import Data.Bits (bit, setBit, (.&.))
+import Data.Bits
 import Data.List
 import qualified Data.Map as Map
 import Data.Word
@@ -45,13 +46,17 @@ modifiers = foldl' (\i -> maybe i (setBit i) . modifierIndex) 0
 readModifiers :: String -> Mod
 readModifiers = modifiers . splitOn ('|'==) 
 
-modCtrl, modMod1, modMod4 :: Mod
+modShift, modCtrl, modMod1, modMod4 :: Mod
+modShift = modifier "Shift"
 modCtrl = modifier "Ctrl"
 modMod1 = modifier "Mod1"
 modMod4 = modifier "Mod4"
 
 modifierMask :: Mod
 modifierMask = modifiers ["Ctrl","Mod1","Mod4"]
+
+modifierTest :: String -> Mod -> Bool
+modifierTest s m = maybe False (testBit m) $ modifierIndex s
 
 mask :: Mod -> ModKey -> ModKey
 mask f (m,k) = (m.&.f,k)
