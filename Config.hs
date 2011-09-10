@@ -149,7 +149,6 @@ defaultConfig = Map.union (Map.fromAscList
 runUzbl :: FilePath -> Cookies -> Config -> Maybe String -> IO ()
 runUzbl sock cookies config uri = do
   let args = ["--connect-socket", sock, "--config", "-"] ++ maybe [] (("-u":) . return) uri
-  print args
   (Just h, _, _, pid) <- createProcess (proc "uzbl-core" args){ std_in = CreatePipe }
   mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ '=' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
   mapM_ (\a -> hPutStrLn h $ unwords $ "add_cookie" : map quote a) $ cookiesArgs cookies

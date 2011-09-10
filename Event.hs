@@ -94,6 +94,7 @@ loadCommit [u] = do
   b <- uzblBlockScript =.< get
   as <- allow "script" (uriDomain u)
   run $ script $ b ++ if as then "" else scriptKillScripts
+  loadStart [u] -- sometimes we don't get this event?
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs
 

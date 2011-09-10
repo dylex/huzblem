@@ -118,8 +118,11 @@ toggleOrCount v l = maybe t c =<< countMaybe where
 linkSelect :: String -> Maybe String -> UzblM ()
 linkSelect n t = run $ script $ scriptLinkSelect n t
 
+promptURI :: (String -> UzblM ()) -> UzblM ()
+promptURI = promptComplete "uri " "" (withDatabase . browseFind)
+
 promptOpen :: UzblM ()
-promptOpen = promptComplete "uri " "" (withDatabase . browseFind) goto
+promptOpen = promptURI goto
 
 toggleBlock :: String -> UzblM ()
 toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [minBound..maxBound::BlockMode]
@@ -160,6 +163,7 @@ commandBinds = Map.fromAscList $
   , ((0, "="),		setVar "zoom_level" (ValFloat 1))
   , ((0, "?"),          prompt "?" "" $ search True)
   , ((0, "@"),		toggleOrCount "caret_browsing" onOff)
+  , ((0, "A"),		uzblURI >>= \u -> prompt "uri " u (newUzbl . Just))
   , ((0, "Button2"),	button2)
   , ((0, "Down"),	scroll "vertical" =<< scrlCount True)
   , ((0, "End"),	scroll "vertical" "end")
@@ -184,6 +188,7 @@ commandBinds = Map.fromAscList $
   , ((0, "]"),		linkSelect "next" $ Just "\\\\bnext|>$")
   , ((0, "^"),	        scroll "horizontal" "begin")
   , ((0, "_"),	        run "zoom_out")
+  , ((0, "a"),		promptURI (newUzbl . Just))
   , ((0, "e"),		runArgs "back" . return . show =<< count)
   , ((0, "f"),		prompt "link " "" $ \t -> linkSelect t Nothing)
   , ((0, "h"),		scroll "horizontal" =<< scrlCount False)
