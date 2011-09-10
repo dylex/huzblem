@@ -26,6 +26,7 @@ import Uzbl
 import Event
 import Cookies
 import Database
+import URIs
 
 removeFile_ :: FilePath -> IO ()
 removeFile_ f = void $ tryJust (\e -> guard (isDoesNotExistError e) >. ()) $ removeFile f
@@ -108,7 +109,7 @@ main = do
       | otherwise -> loadCookies f
 
   let uu [] = [Nothing]
-      uu l = map Just l
+      uu l = map (Just . expandURI) l
   mapM_ (runUzbl sock cookies (optionConfig opts)) (uu urls)
 
   unless me exitSuccess

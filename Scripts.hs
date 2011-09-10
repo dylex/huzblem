@@ -1,5 +1,7 @@
 module Scripts
   ( script, Script
+  , scriptHuzbl
+  , scriptSetDomain
   , scriptLinkSelect
   , scriptActivate
   , scriptBlock
@@ -14,14 +16,43 @@ import Data.Maybe
 import System.FilePath
 import qualified System.IO.Unsafe as Unsafe
 
+import Safe
+
 import Config
 import Util
 import Keys
 
 type Script = String
 
-proc :: String -> Script
-proc = escape . unwords . words
+data ProcMode
+  = ProcSym
+  | ProcWord
+  | ProcQuote !Char
+  deriving (Eq)
+
+sq :: Script -> Script
+--proc = unwords . words
+sq = flip p ProcSym where
+  p [] (ProcQuote _) = error "unterminated quote in script"
+  p [] _ = []
+  p ('\\':c:s) m@(ProcQuote q) | c == q || c == '\\' = '\\':c:p s m
+  p ('\'':s) m = '\'':pq '\'' s m
+  p ('\"':s) m = '\"':pq '\"' s m
+  p (c:s) m 
+    | isSpace c = case m of
+      ProcWord | isAlphaNum (headDef ' ' s) -> ' ':p s ProcSym
+      ProcQuote _ 
+        | c /= '\n' && c /= '\r' -> c:p s m
+        | otherwise -> error "newline in script quote"
+      _ -> p s m
+    | otherwise = c:p s (case m of
+      ProcQuote _ -> m
+      _ | isAlphaNum c -> ProcWord 
+        | otherwise -> ProcSym)
+  pq c s m@(ProcQuote q)
+    | q == c = p s ProcSym
+    | otherwise = p s m
+  pq c s _ = p s (ProcQuote c)
 
 string :: String -> Script
 string = show -- close enough
@@ -30,31 +61,6 @@ bool :: Bool -> Script
 bool False = "false"
 bool True = "true"
 
-load :: FilePath -> Script
-load = proc . Unsafe.unsafeDupablePerformIO . readFile . uzblHome . (<.>"js")
-
-script :: Script -> String
-script = ("js " ++)
-
-scriptLinkSelect :: String -> Maybe String -> Script
-scriptLinkSelect t r = proc $
-  " var el = document.querySelector('link[rel=" ++ string t ++ "]'); \
-  \ if (el) \
-  \   location = el.href; \
-  \ else { \
-  \   var r = RegExp(" ++ string (fromMaybe ("\\b" ++ t) r) ++ ", 'i'); \
-  \   var els = document.getElementsByTagName('a'); \
-  \   for (var i = 0; i < els.length; ++i) \
-  \     if (r.test(els[i].text)) { \
-  \       els[i].focus(); \
-  \       break; \
-  \     } \
-  \ } \
-  \ undefined;"
-
-scriptActivate :: Script
-scriptActivate = load "activate"
-
 regexpQuote :: String -> String
 regexpQuote "" = ""
 regexpQuote (c:s)
@@ -62,26 +68,51 @@ regexpQuote (c:s)
   | otherwise = s'
   where s' = c:regexpQuote s
 
--- this function could be made much better (and may assume the list is domain-ordered)
+regexp :: String -> String -> Script
+regexp i p = '/' : r i ++ '/' : p where
+  r [] = []
+  r ('/':s) = '\\':'/':r s
+  r (c:s) = c:r s
+
+-- this function could be made much better (and may assume the list is domain-grouped)
 hostRegexp :: [String] -> String
-hostRegexp l = "^https?://([^/?#]*\\.)?(" ++ intercalate "|" (map regexpQuote l) ++ ")([/?#]|$)"
+hostRegexp l = regexp ("^https?://([^/?#]*\\.)?(" ++ intercalate "|" (map regexpQuote l) ++ ")([/?#]|$)") "i"
+
+load :: FilePath -> Script
+load = sq . Unsafe.unsafeDupablePerformIO . readFile . uzblHome . (<.>"js")
+
+script :: Script -> String
+script = ("js " ++) . (++ "undefined") . escape
+
+scriptHuzbl :: Script
+scriptHuzbl = load "huzbl"
+
+scriptSetDomain :: String -> Script
+scriptSetDomain dom = "huzbl.domainre=" ++ hostRegexp [dom] ++ ";"
+
+scriptLinkSelect :: String -> Maybe String -> Script
+scriptLinkSelect t r = "huzbl.linkSelect(" ++ string t ++ ", " ++ regexp (fromMaybe ("\\b" ++ regexpQuote t) r) "i" ++ ");"
+
+scriptActivate :: Script
+scriptActivate = "huzbl.activate(document.activeElement);"
 
 scriptBlock :: Bool -> ([String], [String]) -> [(String, BlockMode)] -> Script
 scriptBlock verb (bl,tl) bm =
-  proc ("var uzbl_block={" ++ concatMap bf bm ++ "verbose:" ++ bool verb ++ "};") ++ load "block"
+  "huzbl.block={" ++ concatMap bf bm ++ "verbose:" ++ bool verb ++ "};" ++ load "block"
   where
-    bf (t,m) = map toUpper t ++ ":{default:" ++ bv (blockMode m) ++ "},"
-    bv (b,l) = bool b ++ br (guard l >> if b then bl else tl)
+    bf (t,m) = map toUpper t ++ ":{default:" ++ bv m ++ "},"
+    bv m = bool (blockModeDefault m) 
+      ++ (guard (blockModeList m) >> br (if blockModeDefault m then bl else tl)) 
+      ++ (guard (m == AllowTrustedCurrent) >> ",cur:true")
     br [] = ""
-    br l = ",src:RegExp(" ++ string (hostRegexp l) ++ ",'i')"
+    br l = ",src:" ++ hostRegexp l
 
 scriptKillScripts :: Script
 scriptKillScripts = load "killscript"
 
 scriptKeydown :: ModKey -> Script
-scriptKeydown (m,k) = proc $ 
-  " var event = document.createEvent('KeyboardEvent'); \
-  \ event.initKeyboardEvent('keydown',false,false,null," ++ string k ++ ",0" ++ concatMap b ["Ctrl","Alt","Shift","Mod1"] ++ ",false); \
-  \ document.dispatchEvent(event); \
-  \ undefined;"
+scriptKeydown (m,k) =
+  "var event=document.createEvent('KeyboardEvent');\
+  \event.initKeyboardEvent('keydown',false,false,null," ++ string k ++ ",0" ++ concatMap b ["Ctrl","Alt","Shift","Mod1"] ++ ",false);\
+  \document.dispatchEvent(event);"
   where b = (',':) . bool . (`modifierTest` m) 

@@ -2,7 +2,8 @@ module Config
   ( Variable
   , Value(..), readValue, showValue
   , Config
-  , BlockMode(..), blockMode
+  , BlockMode(..)
+  , blockModeDefault, blockModeList
 
   , home, uzblHome
   , defaultConfig
@@ -76,16 +77,21 @@ instance Show Value where
 data BlockMode 
   = BlockNone
   | BlockUntrusted
+  | AllowTrustedCurrent
   | AllowTrusted
   | BlockAll
-  deriving (Show, Enum, Bounded)
+  deriving (Show, Eq, Enum, Bounded)
 
-blockMode :: BlockMode -> (Bool, Bool)
-blockMode BlockNone = (True, False)
-blockMode BlockUntrusted = (True, True)
-blockMode AllowTrusted = (False, True)
-blockMode BlockAll = (False, False)
+blockModeDefault :: BlockMode -> Bool
+blockModeDefault BlockNone = True
+blockModeDefault BlockUntrusted = True
+blockModeDefault _ = False
 
+blockModeList :: BlockMode -> Bool
+blockModeList BlockUntrusted = True
+blockModeList AllowTrustedCurrent = True
+blockModeList AllowTrusted = True
+blockModeList _ = False
 
 home :: FilePath
 home = Unsafe.unsafeDupablePerformIO $ getEnv "HOME"
@@ -127,7 +133,7 @@ defaultConfig :: Config
 defaultConfig = Map.union (Map.fromAscList 
   [ ("block_cookie",		ValInt $ fromEnum AllowTrusted)
   , ("block_embed",		ValInt $ fromEnum AllowTrusted)
-  , ("block_iframe",		ValInt $ fromEnum AllowTrusted)
+  , ("block_iframe",		ValInt $ fromEnum AllowTrustedCurrent)
   , ("block_img",		ValInt $ fromEnum BlockUntrusted)
   , ("block_script",		ValInt $ fromEnum AllowTrusted)
   , ("block_verbose",		ValInt 1)

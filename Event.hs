@@ -60,10 +60,16 @@ newWindow _ = badArgs
 
 allow :: String -> String -> UzblM Bool
 allow bt dom = do
-  (d, l) <- blockMode . toEnum =.< getVarInt ("block_" ++ bt)
-  fromMaybe d =.< if l
-    then withDatabase $ blockTest dom
-    else return Nothing
+  b <- toEnum =.< getVarInt ("block_" ++ bt)
+  let n | blockModeList b = withDatabase $ blockTest dom
+        | otherwise = return Nothing
+      c | b == AllowTrustedCurrent = do
+          u <- uzblURI
+          if u `uriInDomain` dom
+            then return (Just True)
+            else n
+        | otherwise = n
+  fromMaybe (blockModeDefault b) =.< c
 
 acceptCookie :: Cookie -> UzblM Bool
 acceptCookie c = allow "cookie" (cookieDomain c)
@@ -92,8 +98,12 @@ loadStart _ = badArgs
 loadCommit :: [String] -> UzblM ()
 loadCommit [u] = do
   b <- uzblBlockScript =.< get
-  as <- allow "script" (uriDomain u)
-  run $ script $ b ++ if as then "" else scriptKillScripts
+  let dom = uriDomain u
+  as <- allow "script" dom
+  run $ script $ scriptHuzbl
+    ++ scriptSetDomain dom 
+    ++ b
+    ++ (guard as >> scriptKillScripts)
   loadStart [u] -- sometimes we don't get this event?
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs

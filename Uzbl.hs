@@ -213,7 +213,7 @@ newUzbl uri = do
     (uzblemSocket $ uzblGlobal c) 
     (uzblCookies u) 
     (Map.insert "parent" (ValInt $ fromIntegral $ clientKey c) $ uzblVariables u) 
-    uri
+    (fmap expandURI uri)
 
 blockScript :: UzblM Script
 blockScript = do
