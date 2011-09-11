@@ -1,0 +1,14 @@
+span.huzbl_link_number {
+	border: 	1px solid blue !important;
+	font:		normal 9px monospace !important;
+	text-decoration: none !important;
+	position:	absolute !important;
+	margin-top:	-6px !important;
+	margin-left:	-6px !important;
+	z-index:	3 !important;
+	opacity:	0.5 !important;
+	padding:	0 !important;
+	min-width:	0 !important;
+	min-height:	0 !important;
+	text-indent:	0;
+}

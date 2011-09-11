@@ -5,6 +5,7 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Char
 import Data.Function
 import Data.IORef
 import Data.List
@@ -85,6 +86,7 @@ main = do
       exitFailure
   path <- Env.getEnv "PATH"
   setEnv "PATH" (uzblHome "" ++ maybe "" (':':) path) True
+  hSetEncoding stdout latin1
 
   s <- socket AF_UNIX Stream defaultProtocol
   let sock = optionSocket opts
@@ -144,6 +146,7 @@ client :: UzblGlobal -> (Socket, SockAddr) -> IO ()
 client global (s,_) = do
   h <- socketToHandle s ReadWriteMode
   hSetBuffering h LineBuffering
+  hSetEncoding h utf8
   l <- hGetLine h
   case words l of
     ["EVENT", '[':sinst, "INSTANCE_START", spid]
@@ -169,16 +172,20 @@ client global (s,_) = do
 
 proc :: UzblClient -> UzblM ()
 proc c = do
-  let tpl = "EVENT [" ++ uzblInstance c ++ "] "
+  let evt = "EVENT [" ++ uzblInstance c ++ "] "
+      rqt = "REQUEST [" ++ uzblInstance c ++ "] "
       loop = (`when` loop) =<< line =<< io (hGetLine (uzblHandle c))
       line "" = return True
       line s
-        | Just l <- stripPrefix tpl s
-        , ev:args <- quotedWords l = local (\ur -> ur{ uzblEvent = Just (Event ev, args) }) $
-            if ev == "INSTANCE_EXIT"
-              then log "finished" >. False
-              else debug "" >> event (Event ev) args >. True
+        | Just l <- stripPrefix evt s
+        , ev:args <- quotedWords l = go (Event ev) args
+        | Just l <- stripPrefix rqt s
+        , (rq,arg) <- breakStrip isSpace l = go (Request rq) [arg]
         | otherwise = log s >. True
+      go ev args = local (\ur -> ur{ uzblEvent = Just (ev, args) }) $
+        if ev == Event "INSTANCE_EXIT"
+          then log "finished" >. False
+          else debug "" >> event ev args >. True
   log "starting"
   loop
 

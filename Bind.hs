@@ -22,10 +22,10 @@ import Scripts
 import URIs
 
 pasteURI :: UzblM ()
-pasteURI = io (capture "xclip" ["-o"]) >>= maybe nop goto
+pasteURI = io paste >>= maybe nop goto
 
 copyURI :: UzblM ()
-copyURI = io . pipe "xclip" [] =<< uzblURI
+copyURI = io . copy =<< uzblURI
 
 rawBind :: ModKey -> UzblM ()
 rawBind (0, "Escape") = do
@@ -98,6 +98,9 @@ countMaybe = do
   setVar "command_count" $ ValStr ""
   return $ commandCount b
 
+onCount :: UzblM a -> (Int -> UzblM a) -> UzblM a
+onCount n y = maybe n y =<< countMaybe
+
 count :: UzblM Int
 count = fromMaybe 1 =.< countMaybe
 
@@ -108,15 +111,15 @@ scrlCount :: Bool -> UzblM String
 scrlCount pos = scaleCount $ (if pos then id else negate) 20
 
 toggleOrCount :: Variable -> [Value] -> UzblM ()
-toggleOrCount v l = maybe t c =<< countMaybe where 
+toggleOrCount v l = onCount t c where 
   t = toggleVar v l
   c i 
-    | (ValInt _:_) <- l = setVarMsg v $ ValInt i
+    | (ValInt _:_) <- l = setVarMsg v (ValInt i)
     | i <= length l = setVarMsg v (l !! pred i)
     | otherwise = t
 
 linkSelect :: String -> Maybe String -> UzblM ()
-linkSelect n t = run $ script $ scriptLinkSelect n t
+linkSelect n t = runScript $ scriptLinkSelect n t
 
 promptURI :: (String -> UzblM ()) -> UzblM ()
 promptURI = promptComplete "uri " "" (withDatabase . browseFind)
@@ -150,10 +153,14 @@ favorites n = do
 
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
-  [ ((0, "$"),	        scroll "horizontal" "end")
+  [ ((0, "#"),	        toggleOrCount "link_number" onOff)
+  , ((0, "$"),	        scroll "horizontal" "end")
   , ((0, "%"),	        toggleOrCount "disable_scripts" onOff)
   , ((0, "&"),	        toggleOrCount "stylesheet_uri" stylesheets)
   , ((0, "+"),	        run "zoom_in")
+  , ((0, "-"),		onCount
+                          (newUzbl . Just =<< uzblURI)
+                          (request "WINDOW" . scriptLinkGet . Just))
   , ((0, "/"),          prompt "/" "" $ search False)
   , ((0, "0"),	        zero)
   ] ++ 
@@ -170,7 +177,7 @@ commandBinds = Map.fromAscList $
   , ((0, "Escape"),	commandMode)
   , ((0, "G"),	        scroll "vertical" "end")
   , ((0, "Home"),	scroll "vertical" "begin")
-  , ((0, "ISO_Left_Tab"), run $ script $ scriptKeydown (modShift,"U+0009"))
+  , ((0, "ISO_Left_Tab"), runScript $ scriptKeydown (modShift,"U+0009"))
   , ((0, "L"),		run "search_reverse")
   , ((0, "Left"),       scroll "horizontal" =<< scrlCount False)
   , ((0, "O"),		uzblURI >>= \u -> prompt "uri " u goto)
@@ -178,11 +185,10 @@ commandBinds = Map.fromAscList $
   , ((0, "Page_Up"),	scroll "vertical" . (++"%") =<< scaleCount (-100))
   , ((0, "Q"),	        run "exit")
   , ((0, "R"),		run "reload_ign_cache")
-  , ((0, "Return"),	run $ script scriptActivate)
+  , ((0, "Return"),	runScript . scriptActivate =<< countMaybe)
   , ((0, "Right"),	scroll "horizontal" =<< scrlCount True)
-  , ((0, "Tab"),	run $ script $ scriptKeydown (0,"U+0009"))
+  , ((0, "Tab"),	runScript $ scriptKeydown (0,"U+0009"))
   , ((0, "Up"),		scroll "vertical" =<< scrlCount False)
-  , ((0, "W"),		newUzbl . Just =<< uzblURI)
   , ((0, "["),		linkSelect "prev" $ Just "\\\\bprev|^<")
   , ((0, "\\"),		toggleOrCount "view_source" onOff >> run "reload")
   , ((0, "]"),		linkSelect "next" $ Just "\\\\bnext|>$")
@@ -190,7 +196,9 @@ commandBinds = Map.fromAscList $
   , ((0, "_"),	        run "zoom_out")
   , ((0, "a"),		promptURI (newUzbl . Just))
   , ((0, "e"),		runArgs "back" . return . show =<< count)
-  , ((0, "f"),		prompt "link " "" $ \t -> linkSelect t Nothing)
+  , ((0, "f"),		onCount 
+                          (prompt "link " "" $ \t -> linkSelect t Nothing) 
+                          (runScript . scriptFocus))
   , ((0, "h"),		scroll "horizontal" =<< scrlCount False)
   , ((0, "i"),		rawMode)
   , ((0, "l"),		run "search")
@@ -203,7 +211,7 @@ commandBinds = Map.fromAscList $
   , ((0, "t"),		scroll "vertical" =<< scrlCount True)
   , ((0, "u"),		runArgs "forward" . return . show =<< count)
   , ((0, "v"),		run "toggle_status")
-  , ((0, "y"),		copyURI)
+  , ((0, "y"),		onCount copyURI (request "COPY" . scriptLinkGet . Just))
   , ((0, "z"),		run "stop")
   , ((0, "{"),	        toggleOrCount "enable_spellcheck" onOff)
   , ((modMod1, "C"),	cookieSave)

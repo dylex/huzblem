@@ -40,6 +40,7 @@ variableSet ["inject_html",_,_] = nop
 variableSet [var,typ,sval] | Just val <- readValue typ sval = do
   setVar' var val
   when ("block_" `isPrefixOf` var) updateBlockScript
+  when (var == "link_number") $ runScript $ scriptLinkNumber (val /= ValInt 0)
 variableSet _ = badArgs
 
 fifoSet :: [String] -> UzblM ()
@@ -100,7 +101,7 @@ loadCommit [u] = do
   b <- uzblBlockScript =.< get
   let dom = uriDomain u
   as <- allow "script" dom
-  run $ script $ scriptHuzbl
+  runScript $ scriptInit
     ++ scriptSetDomain dom 
     ++ b
     ++ (guard as >> scriptKillScripts)
@@ -115,6 +116,9 @@ loadFinish [u] = do
   p <- getVarInt "enable_private"
   unless (p /= 0 || "file:///" `isPrefixOf` u || "about:" `isPrefixOf` u) $
     withDatabase $ browseAdd u $ case t of { ValStr s -> Just s ; _ -> Nothing }
+  n <- getVarInt "link_number"
+  when (n /= 0) $
+    runScript $ scriptLinkNumber True
 loadFinish _ = badArgs
 
 loadProgress :: [String] -> UzblM ()
@@ -151,7 +155,8 @@ downloadComplete [f] = io $ putStrLn $ "download complete: " ++ f
 downloadComplete _ = badArgs
 
 events :: Map.Map Event ([String] -> UzblM ())
-events = Map.fromAscList $ map (first Event) $ 
+events = Map.fromAscList $ 
+  map (first Event) (
   [ ("ADD_COOKIE",	addCookie)
   , ("COMMAND_ERROR",	commandError)
   , ("COMMAND_EXECUTED",commandExecuted)
@@ -169,7 +174,11 @@ events = Map.fromAscList $ map (first Event) $
   , ("SOCKET_SET",	socketSet) 
   , ("TITLE_CHANGED",	titleChanged) 
   , ("VARIABLE_SET",	variableSet) 
-  ]
+  ]) ++ 
+  map (\(r,f) -> (Request r, f . head)) (
+  [ ("COPY",            io . copy)
+  , ("WINDOW",          newUzbl . Just)
+  ])
 
 event :: Event -> [String] -> UzblM ()
 event ev args = maybe nop

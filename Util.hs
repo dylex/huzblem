@@ -13,6 +13,7 @@ module Util
   , mlEscape
 
   , capture, pipe
+  , copy, paste
   ) where
 
 import Control.Monad
@@ -126,3 +127,9 @@ pipe cmd args str = do
   hPutStr h str
   hClose h
   void $ waitForProcess pid
+
+copy :: String -> IO ()
+copy = pipe "xclip" []
+
+paste :: IO (Maybe String)
+paste = capture "xclip" ["-o"]

@@ -1,11 +1,8 @@
 @import "style.css";
 
-body {
-	background: none !important;
-}
 * {
 	color: #CCC !important;
-	background-color: #000 !important;
+	background: #000 !important;
 	text-shadow: none !important;
 }
 a:link {

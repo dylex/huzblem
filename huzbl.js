@@ -1,5 +1,5 @@
 var huzbl = {
-	hostre : /^(?:https?|ftp):\/\/(?:[^@\/?#]*@)?([^:\/?#]*)(?::\d+)?(?:[\/?#]|$)/i,
+	links : document.getElementsByTagName("a"),
 	activate : function(e) {
 		while (e && e != document) {
 			if (typeof(e.click) === 'function')
@@ -9,17 +9,22 @@ var huzbl = {
 			e = e.parentNode;
 		}
 	},
+	linkSelected : -1,
+	linkFocus : function(n) {
+		this.linkSelected = n;
+		this.links[n].focus();
+	},
 	linkSelect : function(t, r) {
 		var el = document.querySelector('link[rel=' + t + ']');
 		if (el)
 		        location = el.href;
 		else {
-		        var els = document.getElementsByTagName('a');
-		        for (var i = 0; i < els.length; ++i)
-		   	     if (r.test(els[i].text)) {
-		   		     els[i].focus();
-		   		     break;
-		   	     }
+		        for (var i = this.linkSelected+1; i < this.links.length; i++)
+				if (r.test(this.links[i].text)) {
+					this.linkFocus(i);
+					break;
+				}
+			this.linkSelected = -1;
 		}
         }
 };

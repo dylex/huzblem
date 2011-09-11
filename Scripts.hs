@@ -1,9 +1,13 @@
 module Scripts
   ( script, Script
-  , scriptHuzbl
+  , scriptRequest
+  , scriptInit
   , scriptSetDomain
   , scriptLinkSelect
   , scriptActivate
+  , scriptLinkGet
+  , scriptLinkNumber
+  , scriptFocus
   , scriptBlock
   , scriptKillScripts
   , scriptKeydown
@@ -84,8 +88,11 @@ load = sq . Unsafe.unsafeDupablePerformIO . readFile . uzblHome . (<.>"js")
 script :: Script -> String
 script = ("js " ++) . (++ "undefined") . escape
 
-scriptHuzbl :: Script
-scriptHuzbl = load "huzbl"
+scriptRequest :: String -> String -> Script -> String
+scriptRequest i t a = "js " ++ string ("REQUEST [" ++ i ++ "] " ++ t ++ " ") ++ "+(" ++ escape a ++ ")"
+
+scriptInit :: Script
+scriptInit = load "huzbl" ++ load "linknumber"
 
 scriptSetDomain :: String -> Script
 scriptSetDomain dom = "huzbl.domainre=" ++ hostRegexp [dom] ++ ";"
@@ -93,8 +100,19 @@ scriptSetDomain dom = "huzbl.domainre=" ++ hostRegexp [dom] ++ ";"
 scriptLinkSelect :: String -> Maybe String -> Script
 scriptLinkSelect t r = "huzbl.linkSelect(" ++ string t ++ ", " ++ regexp (fromMaybe ("\\b" ++ regexpQuote t) r) "i" ++ ");"
 
-scriptActivate :: Script
-scriptActivate = "huzbl.activate(document.activeElement);"
+scriptActivate :: Maybe Int -> Script
+scriptActivate Nothing = "huzbl.activate(document.activeElement);"
+scriptActivate (Just n) = "huzbl.linkNumber.activate(" ++ show n ++ ");"
+
+scriptLinkGet :: Maybe Int -> Script
+scriptLinkGet Nothing = "document.activeElement.href" -- FIXME
+scriptLinkGet (Just n) = "huzbl.linkNumber.get(" ++ show n ++ ")"
+
+scriptFocus :: Int -> Script
+scriptFocus n = "huzbl.linkNumber.focus(" ++ show n ++ ");"
+
+scriptLinkNumber :: Bool -> Script
+scriptLinkNumber y = "huzbl.linkNumber." ++ (if y then "show" else "hide") ++ "();"
 
 scriptBlock :: Bool -> ([String], [String]) -> [(String, BlockMode)] -> Script
 scriptBlock verb (bl,tl) bm =

@@ -21,6 +21,8 @@ module Uzbl
   , withDatabase
   , newUzbl
   , updateBlockScript
+  , runScript
+  , request
   ) where
 
 import Prelude hiding (log)
@@ -44,11 +46,14 @@ import Cookies
 import Scripts
 import URIs
 
-newtype Event = Event String deriving (Eq, Ord)
+data Event 
+  = Event String
+  | Request String
+  deriving (Eq, Ord)
 
 instance Show Event where
-  showsPrec _ (Event e) = showString e
   show (Event e) = e
+  show (Request e) = "REQUEST:" ++ e
 
 type ClientKey = ProcessID
 type Clients = Map.Map ClientKey UzblClient
@@ -230,3 +235,10 @@ updateBlockScript = do
   s <- blockScript
   modify $ \u -> u{ uzblBlockScript = s }
 
+runScript :: Script -> UzblM ()
+runScript = run . script
+
+request :: String -> Script -> UzblM ()
+request t s = do
+  i <- uzblInstance =.< ask
+  run $ scriptRequest i t s
