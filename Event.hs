@@ -40,7 +40,7 @@ variableSet ["inject_html",_,_] = nop
 variableSet [var,typ,sval] | Just val <- readValue typ sval = do
   setVar' var val
   when ("block_" `isPrefixOf` var) updateBlockScript
-  when (var == "link_number") $ runScript $ scriptLinkNumber (val /= ValInt 0)
+  when (var == "link_number") $ runScript $ scriptLinkNumber (val /= ValInt 0) -- error before loading
 variableSet _ = badArgs
 
 fifoSet :: [String] -> UzblM ()

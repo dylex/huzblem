@@ -132,7 +132,7 @@ baseConfig = Map.fromAscList
 defaultConfig :: Config
 defaultConfig = Map.union (Map.fromAscList 
   [ ("block_cookie",		ValInt $ fromEnum AllowTrusted)
-  , ("block_embed",		ValInt $ fromEnum AllowTrusted)
+  , ("block_embed",		ValInt $ fromEnum BlockAll)
   , ("block_iframe",		ValInt $ fromEnum AllowTrustedCurrent)
   , ("block_img",		ValInt $ fromEnum BlockUntrusted)
   , ("block_script",		ValInt $ fromEnum AllowTrusted)

@@ -13,7 +13,7 @@ import Text.URI
 import Config
 
 okInArg :: Char -> Bool
-okInArg c = isAlphaNum c || c `elem` "!$'()*+,/:"
+okInArg c = isAlphaNum c || c `elem` "!$'()*,/:"
 
 uriDomain :: String -> String
 uriDomain u = fromMaybe "" $ uriRegName =<< parseURI u
@@ -61,6 +61,7 @@ defaultRewrite :: String -> String
 defaultRewrite = rewrites Map.! "s"
 
 expandURI :: String -> String
+expandURI "" = "about:blank"
 expandURI (' ':s) = expandURI s
 expandURI ('/':s) = "file://" ++ s
 expandURI ('~':s@('/':_)) = "file://" ++ home ++ s

@@ -62,6 +62,7 @@ splitOn f l = case break f l of
   (s,_:l') -> s : splitOn f l'
   (s,[])  -> [s]
 
+-- this is not quite right: does not handle interior quotiing
 quotedWord :: String -> (String, String)
 quotedWord [] = ("", "")
 quotedWord (q:s) | q `elem` "\'\"" = ps s where
@@ -85,13 +86,12 @@ escape (c:s)
   | otherwise = s'
   where s' = c:escape s
 
+-- also escapes (note that " get double escaping)
 quote :: String -> String
-quote = ('"' :) . q where
+quote = ('"' :) . escape . q where
   q "" = "\""
-  q (c:s)
-    | c `elem` "\"@\\" = '\\':s'
-    | otherwise = s'
-    where s' = c:q s
+  q ('"':s) = '\\':'"':q s
+  q (c:s) = c:q s
 
 mlEscape :: String -> String
 mlEscape "" = ""
