@@ -6,6 +6,7 @@ module Event
 import Prelude hiding (log)
 
 import Control.Monad
+import qualified Data.ByteString.Char8 as BS
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
@@ -73,7 +74,7 @@ allow bt dom = do
   fromMaybe (blockModeDefault b) =.< c
 
 acceptCookie :: Cookie -> UzblM Bool
-acceptCookie c = allow "cookie" (cookieDomain c)
+acceptCookie c = allow "cookie" (BS.unpack $ cookieDomain c)
 
 addCookie :: [String] -> UzblM ()
 addCookie args = maybe badArgs ac $ argCookie args where

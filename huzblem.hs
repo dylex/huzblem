@@ -33,7 +33,7 @@ removeFile_ :: FilePath -> IO ()
 removeFile_ f = void $ tryJust (\e -> guard (isDoesNotExistError e) >. ()) $ removeFile f
 
 data Options = Options
-  { optionSocket :: FilePath
+  { optionSocket :: Maybe String
   , optionCookies :: Maybe FilePath
   , optionDebug :: Bool
   , optionConfig :: Config
@@ -41,11 +41,14 @@ data Options = Options
 
 defaultOptions :: Options
 defaultOptions = Options
-  { optionSocket = uzblHome ".huzblem"
-  , optionCookies = Just $ uzblHome "cookies" -- home </> ".elinks/cookies"
+  { optionSocket = Nothing
+  , optionCookies = Just $ uzblHome "cookies.txt"
   , optionDebug = False
   , optionConfig = defaultConfig
   }
+
+defaultSocket :: FilePath
+defaultSocket = uzblHome ".huzblem"
 
 optionConfig' :: (Config -> Config) -> Options -> Options
 optionConfig' f o = o{ optionConfig = f (optionConfig o) }
@@ -59,8 +62,8 @@ setConfig c = case break ('=' ==) c of
 options :: [GetOpt.OptDescr (Options -> Options)]
 options = 
   [ GetOpt.Option "s" ["socket"] 
-      (GetOpt.ReqArg (\s o -> o{ optionSocket = if isAbsolute s then s else optionSocket o ++ '-' : s }) "PATH") 
-      ("path or suffix for event manager socket [" ++ optionSocket defaultOptions ++ "]")
+      (GetOpt.ReqArg (\s o -> o{ optionSocket = Just s }) "NAME|PATH") 
+      ("suffix or absolute path for event manager socket [" ++ defaultSocket ++ "]")
   , GetOpt.Option "" ["cookies"]
       (GetOpt.OptArg (\s o -> o{ optionCookies = s }) "FILE") 
       ("Load and use cookies from FILE [" ++ fromMaybe "NONE" (optionCookies defaultOptions) ++ "]")
@@ -89,7 +92,7 @@ main = do
   hSetEncoding stdout latin1
 
   s <- socket AF_UNIX Stream defaultProtocol
-  let sock = optionSocket opts
+  let sock = maybe defaultSocket (\p -> if isAbsolute p then p else defaultSocket ++ '-' : p) $ optionSocket opts
       sa = SockAddrUnix sock
       ifdne e = guard (isDoesNotExistError e) >. ()
 
@@ -107,8 +110,9 @@ main = do
   cookies <- case optionCookies opts of
     Nothing -> return emptyCookies
     Just f 
+      | Just f' <- stripPrefix "elinks:" f -> loadElinksCookies f'
       | ".elinks/" `isInfixOf` f -> loadElinksCookies f
-      | otherwise -> loadCookies f
+      | otherwise -> loadCookiesTxt f
 
   let uu [] = [Nothing]
       uu l = map (Just . expandURI) l
@@ -165,9 +169,7 @@ client global (s,_) = do
         bracket_ 
           (ucl $ return . Map.insert (clientKey c) c)
           (ucl $ return . Map.update (\c' -> guard (on (/=) uzblThread c c') >. c') (clientKey c))
-          (evalStateT (runReaderT (proc c) c) emptyState{
-              uzblCookies = uzblemCookies global
-            })
+          (evalStateT (runReaderT (proc c) c) emptyState)
     _ -> putStrLn $ "huzblem: bad start: " ++ l
 
 proc :: UzblClient -> UzblM ()

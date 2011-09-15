@@ -48,7 +48,7 @@ search rev s = run $ "search" ++ (if rev then "_reverse" else "") ++ ' ' : escap
 
 cookieSave :: UzblM ()
 cookieSave = do
-  io . saveCookies (uzblHome "cookies.save") . uzblCookies =<< get
+  io . saveCookiesTxt (uzblHome "cookies.txt") . uzblCookies =<< get
   status "cookies saved"
 
 promptComplete :: String -> String -> (String -> UzblM (Maybe String)) -> (String -> UzblM ()) -> UzblM ()
