@@ -8,7 +8,8 @@ module Scripts
   , scriptLinkGet
   , scriptLinkNumber
   , scriptFocus
-  , scriptBlock
+  , scriptSetBlocks
+  , scriptSetBlock
   , scriptKillScripts
   , scriptKeydown
   ) where
@@ -22,9 +23,11 @@ import qualified System.IO.Unsafe as Unsafe
 
 import Safe
 
+import Block
 import Config
 import Util
 import Keys
+import qualified DomainMap as DM
 
 type Script = String
 
@@ -78,9 +81,25 @@ regexp i p = '/' : r i ++ '/' : p where
   r ('/':s) = '\\':'/':r s
   r (c:s) = c:r s
 
--- this function could be made much better (and may assume the list is domain-grouped)
-hostRegexp :: [String] -> String
-hostRegexp l = regexp ("^https?://([^/?#]*\\.)?(" ++ intercalate "|" (map regexpQuote l) ++ ")([/?#]|$)") "i"
+hostRegexp :: String -> String
+hostRegexp h = regexp ("^https?://(?:[^/?#]*\\.)?(" ++ h ++ ")\\.?(?::\\d+)?(?:[/?#]|$)") "i"
+
+data Count a
+  = None
+  | One { unCount :: !a }
+  | Group { unCount :: !a }
+
+domainRegexp :: DM.DomainMap a -> String
+domainRegexp t
+  | DM.null t = "false"
+  | otherwise = hostRegexp dr where
+  dr = unCount $ DM.foldrTree df (const None) None t
+  df n d = alt $ sub d ++ regexpQuote n
+  sub None = ""
+  sub (One d) = d ++ "\\."
+  sub (Group d) = "(?:" ++ d ++ ")\\."
+  alt x None = One x
+  alt x r = Group $ x ++ '|' : unCount r
 
 load :: FilePath -> Script
 load = sq . Unsafe.unsafeDupablePerformIO . readFile . uzblHome . (<.>"js")
@@ -92,10 +111,10 @@ scriptRequest :: String -> String -> Script -> String
 scriptRequest i t a = "js " ++ string ("REQUEST [" ++ i ++ "] " ++ t ++ " ") ++ "+(" ++ escape a ++ ")"
 
 scriptInit :: Script
-scriptInit = load "huzbl" ++ load "linknumber"
+scriptInit = load "huzbl" ++ load "block" ++ load "linknumber"
 
 scriptSetDomain :: String -> Script
-scriptSetDomain dom = "huzbl.domainre=" ++ hostRegexp [dom] ++ ";"
+scriptSetDomain dom = "huzbl.domainre=" ++ hostRegexp (regexpQuote dom) ++ ";"
 
 scriptLinkSelect :: String -> Maybe String -> Script
 scriptLinkSelect t r = "huzbl.linkSelect(" ++ string t ++ ", " ++ regexp (fromMaybe ("\\b" ++ regexpQuote t) r) "i" ++ ");"
@@ -114,16 +133,19 @@ scriptFocus n = "huzbl.linkNumber.focus(" ++ show n ++ ");"
 scriptLinkNumber :: Bool -> Script
 scriptLinkNumber y = "huzbl.linkNumber." ++ (if y then "show" else "hide") ++ "();"
 
-scriptBlock :: Bool -> ([String], [String]) -> [(String, BlockMode)] -> Script
-scriptBlock verb (bl,tl) bm =
-  "huzbl.block={" ++ concatMap bf bm ++ "verbose:" ++ bool verb ++ "};" ++ load "block"
+scriptSetBlocks :: Blocks -> Script
+scriptSetBlocks bl =
+  "huzbl.blockre=" ++ br ++ ";huzbl.trustre=" ++ tr ++ ";"
+  where (tr, br) = both domainRegexp $ DM.partition id bl
+
+scriptSetBlock :: Bool -> [(String, BlockMode)] -> Script
+scriptSetBlock verb bm =
+  "huzbl.block={" ++ concatMap bf bm ++ "verbose:" ++ bool verb ++ "};"
   where
     bf (t,m) = map toUpper t ++ ":{default:" ++ bv m ++ "},"
     bv m = bool (blockModeDefault m) 
-      ++ (guard (blockModeList m) >> br (if blockModeDefault m then bl else tl)) 
-      ++ (guard (m == AllowTrustedCurrent) >> ",cur:true")
-    br [] = ""
-    br l = ",src:" ++ hostRegexp l
+      ++ (guard (blockModeCurrent m) >> ",cur:true")
+      ++ (guard (blockModeList m) >> ",src:" ++ if blockModeDefault m then "huzbl.blockre" else "huzbl.trustre")
 
 scriptKillScripts :: Script
 scriptKillScripts = load "killscript"

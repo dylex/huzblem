@@ -5,11 +5,10 @@ module Event
 
 import Prelude hiding (log)
 
+import Control.Concurrent.MVar
 import Control.Monad
-import qualified Data.ByteString.Char8 as BS
 import Data.List
 import qualified Data.Map as Map
-import Data.Maybe
 import Numeric
 
 import Safe
@@ -23,6 +22,8 @@ import Cookies
 import Database
 import Scripts
 import URIs
+import DomainMap (IsDomain)
+import Block
 
 badArgs :: UzblM ()
 badArgs = log "unknown arguments"
@@ -60,21 +61,15 @@ newWindow :: [String] -> UzblM ()
 newWindow [u] = goto u
 newWindow _ = badArgs
 
-allow :: String -> String -> UzblM Bool
+allow :: IsDomain s => String -> s -> UzblM Bool
 allow bt dom = do
   b <- toEnum =.< getVarInt ("block_" ++ bt)
-  let n | blockModeList b = withDatabase $ blockTest dom
-        | otherwise = return Nothing
-      c | b == AllowTrustedCurrent = do
-          u <- uzblURI
-          if u `uriInDomain` dom
-            then return (Just True)
-            else n
-        | otherwise = n
-  fromMaybe (blockModeDefault b) =.< c
+  c <- uriDomain =.< uzblURI
+  bl <- io . readMVar . uzblBlocks . uzblGlobal =<< ask
+  return $ blockTest bl c b dom
 
 acceptCookie :: Cookie -> UzblM Bool
-acceptCookie c = allow "cookie" (BS.unpack $ cookieDomain c)
+acceptCookie c = allow "cookie" (cookieDomain c)
 
 addCookie :: [String] -> UzblM ()
 addCookie args = maybe badArgs ac $ argCookie args where
@@ -101,9 +96,9 @@ loadCommit :: [String] -> UzblM ()
 loadCommit [u] = do
   b <- uzblBlockScript =.< get
   let dom = uriDomain u
-  as <- allow "script" dom
+  as <- maybe (return False) (allow "script") dom
   runScript $ scriptInit
-    ++ scriptSetDomain dom 
+    ++ maybe "" scriptSetDomain dom 
     ++ b
     ++ (guard as >> scriptKillScripts)
   loadStart [u] -- sometimes we don't get this event?

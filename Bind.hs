@@ -6,6 +6,7 @@ module Bind
 
 import Prelude hiding (log)
 
+import Control.Concurrent.MVar
 import Control.Monad
 import Data.Char
 import qualified Data.Map as Map
@@ -20,6 +21,7 @@ import Database
 import Prompt
 import Scripts
 import URIs
+import Block
 
 pasteURI :: UzblM ()
 pasteURI = io paste >>= maybe nop goto
@@ -44,7 +46,7 @@ rawMode = do
     setVar "status_background" $ ValStr "#000"
 
 search :: Bool -> String -> UzblM ()
-search rev s = run $ "search" ++ (if rev then "_reverse" else "") ++ ' ' : escape s
+search rev s = run $ "search" ++ (guard rev >> "_reverse") ++ ' ' : escape s
 
 cookieSave :: UzblM ()
 cookieSave = do
@@ -133,8 +135,9 @@ toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [minBoun
 promptBlock :: Maybe Bool -> UzblM ()
 promptBlock b = do
   u <- uzblURI
-  prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (uriDomain u) $ \d -> do
-    withDatabase $ blockSet d b
+  prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (fromMaybe "" $ uriDomain u) $ \d -> do
+    bl <- uzblBlocks . uzblGlobal =.< ask
+    io $ modifyMVar_ bl (return . blockSet d b)
     updateBlockScript
 
 favorites :: Int -> UzblM ()

@@ -3,7 +3,7 @@ module Util
   , (>.), (>.=), (>=.)
   , (=.<), (.=<)
 
-  , first, second
+  , first, second, both
 
   , stripLast
   , breakStrip
@@ -45,8 +45,10 @@ infixr 1 =.<, .=<
 -- Control.Arrow
 first  :: (a -> b) -> (a, c) -> (b, c)
 second :: (b -> c) -> (a, b) -> (a, c)
-first  f (a, b) = (f a, b)
-second f (a, b) = (a, f b)
+both   :: (a -> b) -> (a, a) -> (b, b)
+first  f (x, y) = (f x, y)
+second f (x, y) = (x, f y)
+both   f (x, y) = (f x, f y)
 
 stripLast :: Eq a => a -> [a] -> Maybe [a]
 stripLast x [y] | x == y = Just []

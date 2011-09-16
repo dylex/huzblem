@@ -2,8 +2,6 @@ module Config
   ( Variable
   , Value(..), readValue, showValue
   , Config
-  , BlockMode(..)
-  , blockModeDefault, blockModeList
 
   , home, uzblHome
   , defaultConfig
@@ -29,6 +27,7 @@ import Safe
 
 import Util
 import Cookies
+import Block
 
 type Variable = String
 
@@ -73,25 +72,6 @@ instance Show Value where
   showsPrec p (ValInt x) = showsPrec p x
   showsPrec p (ValFloat x) = showsPrec p x
   showsPrec p (ValStr x) = showsPrec p x
-
-data BlockMode 
-  = BlockNone
-  | BlockUntrusted
-  | AllowTrustedCurrent
-  | AllowTrusted
-  | BlockAll
-  deriving (Show, Eq, Enum, Bounded)
-
-blockModeDefault :: BlockMode -> Bool
-blockModeDefault BlockNone = True
-blockModeDefault BlockUntrusted = True
-blockModeDefault _ = False
-
-blockModeList :: BlockMode -> Bool
-blockModeList BlockUntrusted = True
-blockModeList AllowTrustedCurrent = True
-blockModeList AllowTrusted = True
-blockModeList _ = False
 
 home :: FilePath
 home = Unsafe.unsafeDupablePerformIO $ getEnv "HOME"

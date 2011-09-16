@@ -8,7 +8,7 @@ document.addEventListener("beforeload", function(event) {
 	var res = block.default;
 	if ("cur" in block && huzbl.domainre.test(event.target.src))
 		res = block.cur;
-	else if ("src" in block && block.src.test(event.target.src))
+	else if (block.src && block.src.test(event.target.src))
 		res = !res;
 	if (!res)
 	{

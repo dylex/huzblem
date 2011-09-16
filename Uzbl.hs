@@ -45,6 +45,7 @@ import Database
 import Cookies
 import Scripts
 import URIs
+import Block
 
 data Event 
   = Event String
@@ -82,6 +83,7 @@ data UzblGlobal = UzblGlobal
   , uzblemCookies :: Cookies
   , uzblDatabase :: Database
   , uzblDebug :: Bool
+  , uzblBlocks :: MVar Blocks
   }
 
 data UzblClient = UzblClient
@@ -222,10 +224,12 @@ newUzbl uri = do
 
 blockScript :: UzblM Script
 blockScript = do
-  bl <- withDatabase blockLists
+  bl <- io . readMVar . uzblBlocks . uzblGlobal =<< ask
+  let sbl = scriptSetBlocks bl
   bm <- mapM (\t -> ((,) t) . toEnum =.< getVarInt ("block_" ++ t)) bc
   bv <- getVarInt "block_verbose"
-  return $ scriptBlock (0 /= bv) bl $ bm ++ map (\t -> (t, BlockNone)) ba
+  let sbc = scriptSetBlock (0 /= bv) $ bm ++ map (\t -> (t, BlockNone)) ba
+  return $ sbl ++ sbc
   where 
     bc = ["iframe","img","script","embed"]
     ba = ["input","frame","link"]

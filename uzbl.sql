@@ -28,8 +28,3 @@ BEGIN
 END;
 $$
 ;
-
-CREATE TABLE block (
-	domain	domainname PRIMARY KEY,
-	trust	bool
-);

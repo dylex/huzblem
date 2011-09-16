@@ -15,15 +15,15 @@ import Config
 okInArg :: Char -> Bool
 okInArg c = isAlphaNum c || c `elem` "!$'()*,/:"
 
-uriDomain :: String -> String
-uriDomain u = fromMaybe "" $ uriRegName =<< parseURI u
+uriDomain :: String -> Maybe String
+uriDomain u = uriRegName =<< parseURI u
 
 inDomain :: String -> String -> Bool
 inDomain h d'@('.':d) = isSuffixOf d' h || h == d
 inDomain h d = h == d || isSuffixOf ('.':d) h
 
 uriInDomain :: String -> String -> Bool
-uriInDomain = inDomain . uriDomain
+uriInDomain u = maybe False (inDomain u) . uriDomain
 
 infixr 5 ?=
 (?=) :: String -> String -> String
@@ -41,11 +41,11 @@ rewrites = Map.fromAscList
   , ("gs",	("http://scholar.google.com/scholar?q=" ?=))
   , ("hdb",	("http://hackage.haskell.org/package/" ?=))
   , ("hoogle",	("http://haskell.org/hoogle/?q=" ?=))
-  , ("imdb",	("http://imdb.com/Find?" ?=))
+  , ("imdb",	("http://imdb.com/find?q=" ?=))
   , ("math",	("http://mathworld.wolfram.com/search/?query=" ?=))
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
-  , ("rfc",	\q -> "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt")
+  , ("rfc",	("http://tools.ietf.org/html/rfc" ?=)) -- "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt"
   , ("s",	("http://www.scroogle.org/cgi-bin/nbbw.cgi?Gw=" ?=))
   , ("thes",	("http://thesaurus.reference.com/search?q=" ?=))
   , ("trackdhl", ("http://track.dhl-usa.com/TrackByNbr.asp?ShipmentNumber=" ?=))
@@ -71,3 +71,4 @@ expandURI s = case find (`elem` ":. ") s of
   _ -> case break (' '==) s of
     (k,' ':t) | Just r <- Map.lookup k rewrites -> r t
     _ -> defaultRewrite s
+

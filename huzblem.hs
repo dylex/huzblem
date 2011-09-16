@@ -27,6 +27,7 @@ import Uzbl
 import Event
 import Cookies
 import Database
+import Block
 import URIs
 
 removeFile_ :: FilePath -> IO ()
@@ -37,6 +38,7 @@ data Options = Options
   , optionCookies :: Maybe FilePath
   , optionDebug :: Bool
   , optionConfig :: Config
+  , optionBlocks :: FilePath
   }
 
 defaultOptions :: Options
@@ -45,6 +47,7 @@ defaultOptions = Options
   , optionCookies = Just $ uzblHome "cookies.txt"
   , optionDebug = False
   , optionConfig = defaultConfig
+  , optionBlocks = uzblHome "block"
   }
 
 defaultSocket :: FilePath
@@ -89,19 +92,19 @@ main = do
       exitFailure
   path <- Env.getEnv "PATH"
   setEnv "PATH" (uzblHome "" ++ maybe "" (':':) path) True
-  hSetEncoding stdout latin1
+  hSetEncoding stdout char8
 
   s <- socket AF_UNIX Stream defaultProtocol
   let sock = maybe defaultSocket (\p -> if isAbsolute p then p else defaultSocket ++ '-' : p) $ optionSocket opts
       sa = SockAddrUnix sock
-      ifdne e = guard (isDoesNotExistError e) >. ()
+      catchdne f h = catchJust (\e -> guard (isDoesNotExistError e) >. ()) f (\() -> h)
 
-  me <- catchJust ifdne (do
+  me <- catchdne (do
       connect s sa
       sClose s
       putStrLn "huzblem already running"
       return False)
-    (\() -> do
+    (do
       removeFile_ sock
       bindSocket s sa
       listen s (8+length args)
@@ -113,6 +116,7 @@ main = do
       | Just f' <- stripPrefix "elinks:" f -> loadElinksCookies f'
       | ".elinks/" `isInfixOf` f -> loadElinksCookies f
       | otherwise -> loadCookiesTxt f
+  blocks <- (newMVar $!) =<< catchdne (loadBlocks (optionBlocks opts)) (return defaultBlocks)
 
   let uu [] = [Nothing]
       uu l = map (Just . expandURI) l
@@ -135,6 +139,7 @@ main = do
         , uzblemCookies = cookies
         , uzblDatabase = db
         , uzblDebug = optionDebug opts
+        , uzblBlocks = blocks
         }
 
   void $ forkIO $ forever $ accept s >>= \r -> do
@@ -143,6 +148,9 @@ main = do
     threadDelay 5000000
     down
   waitQSem wait
+
+  when (isNothing (optionSocket opts)) $
+    saveBlocks (optionBlocks opts) =<< takeMVar blocks
   removeFile_ sock
   databaseClose db
 
