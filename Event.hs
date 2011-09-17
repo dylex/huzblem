@@ -41,7 +41,6 @@ variableSet :: [String] -> UzblM ()
 variableSet ["inject_html",_,_] = nop
 variableSet [var,typ,sval] | Just val <- readValue typ sval = do
   setVar' var val
-  when ("block_" `isPrefixOf` var) updateBlockScript
   when (var == "link_number") $ runScript $ scriptLinkNumber (val /= ValInt 0) -- error before loading
 variableSet _ = badArgs
 
@@ -92,15 +91,19 @@ loadStart [u] = do
   status ""
 loadStart _ = badArgs
 
+blockScript :: UzblM String
+blockScript = do
+  bm <- mapM (\t -> ((,) t) . toEnum =.< getVarInt ("block_" ++ t)) bc
+  bv <- getVarInt "block_verbose"
+  return $ scriptSetBlock (0 /= bv) $ bm ++ map (\t -> (t, BlockNone)) ba
+  where 
+    bc = ["iframe","img","script","embed"]
+    ba = ["input","frame","link"]
+
 loadCommit :: [String] -> UzblM ()
 loadCommit [u] = do
-  b <- uzblBlockScript =.< get
-  let dom = uriDomain u
-  as <- maybe (return False) (allow "script") dom
-  runScript $ scriptInit
-    ++ maybe "" scriptSetDomain dom 
-    ++ b
-    ++ (guard as >> scriptKillScripts)
+  bs <- blockScript
+  runScriptInit $ scriptSetDomain (uriDomain u) ++ bs
   loadStart [u] -- sometimes we don't get this event?
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs

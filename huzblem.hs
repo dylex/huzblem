@@ -116,7 +116,6 @@ main = do
       | Just f' <- stripPrefix "elinks:" f -> loadElinksCookies f'
       | ".elinks/" `isInfixOf` f -> loadElinksCookies f
       | otherwise -> loadCookiesTxt f
-  blocks <- (newMVar $!) =<< catchdne (loadBlocks (optionBlocks opts)) (return defaultBlocks)
 
   let uu [] = [Nothing]
       uu l = map (Just . expandURI) l
@@ -124,15 +123,10 @@ main = do
 
   unless me exitSuccess
 
-  sem <- newIORef (1 :: Int)
-  wait <- newQSem 0
-  let up = atomicModifyIORef sem (\i -> (succ i, ()))
-      down = do
-        i <- atomicModifyIORef sem (\i -> (pred i, pred i))
-        when (i == 0) $ signalQSem wait
-
   clients <- newMVar Map.empty
   db <- databaseOpen
+  blocks <- (newMVar $!) =<< catchdne (loadBlocks (optionBlocks opts)) (return defaultBlocks)
+  scriptinit <- newIORef (error "scripts uninit")
   let global = UzblGlobal
         { uzblemSocket = sock
         , uzblemClients = clients
@@ -140,7 +134,16 @@ main = do
         , uzblDatabase = db
         , uzblDebug = optionDebug opts
         , uzblBlocks = blocks
+        , uzblScriptInit = scriptinit
         }
+  setScriptInit global
+
+  sem <- newIORef (1 :: Int)
+  wait <- newQSem 0
+  let up = atomicModifyIORef sem (\i -> (succ i, ()))
+      down = do
+        i <- atomicModifyIORef sem (\i -> (pred i, pred i))
+        when (i == 0) $ signalQSem wait
 
   void $ forkIO $ forever $ accept s >>= \r -> do
     void $ forkIO $ bracket_ up down (client global r)

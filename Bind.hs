@@ -138,7 +138,7 @@ promptBlock b = do
   prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (fromMaybe "" $ uriDomain u) $ \d -> do
     bl <- uzblBlocks . uzblGlobal =.< ask
     io $ modifyMVar_ bl (return . blockSet d b)
-    updateBlockScript
+    updateScriptInit
 
 favorites :: Int -> UzblM ()
 favorites n = do

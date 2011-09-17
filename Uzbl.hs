@@ -20,16 +20,19 @@ module Uzbl
   , modifyBindings
   , withDatabase
   , newUzbl
-  , updateBlockScript
+  , setScriptInit, updateScriptInit
   , runScript
+  , runScriptInit
   , request
   ) where
 
 import Prelude hiding (log)
 
+import qualified Data.ByteString.Char8 as BS
 import Control.Concurrent
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.IORef
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
@@ -84,6 +87,7 @@ data UzblGlobal = UzblGlobal
   , uzblDatabase :: Database
   , uzblDebug :: Bool
   , uzblBlocks :: MVar Blocks
+  , uzblScriptInit :: IORef BS.ByteString
   }
 
 data UzblClient = UzblClient
@@ -102,7 +106,6 @@ data UzblState = UzblState
   , uzblCookies :: Cookies
   , uzblBindings :: Bindings
   , uzblPromptHistory :: Seq.Seq String
-  , uzblBlockScript :: Script -- cached
   }
 
 type UzblT m = ReaderT UzblClient (StateT UzblState m)
@@ -122,7 +125,6 @@ emptyState = UzblState
     { commandCount = Nothing
     }
   , uzblPromptHistory = Seq.empty
-  , uzblBlockScript = ""
   }
 
 clientKey :: UzblClient -> ClientKey
@@ -222,27 +224,25 @@ newUzbl uri = do
     (Map.insert "parent" (ValInt $ fromIntegral $ clientKey c) $ uzblVariables u) 
     (fmap expandURI uri)
 
-blockScript :: UzblM Script
-blockScript = do
-  bl <- io . readMVar . uzblBlocks . uzblGlobal =<< ask
-  let sbl = scriptSetBlocks bl
-  bm <- mapM (\t -> ((,) t) . toEnum =.< getVarInt ("block_" ++ t)) bc
-  bv <- getVarInt "block_verbose"
-  let sbc = scriptSetBlock (0 /= bv) $ bm ++ map (\t -> (t, BlockNone)) ba
-  return $ sbl ++ sbc
-  where 
-    bc = ["iframe","img","script","embed"]
-    ba = ["input","frame","link"]
+runScript :: String -> UzblM ()
+runScript s = run $ "js " ++ s ++ "undefined"
 
-updateBlockScript :: UzblM ()
-updateBlockScript = do
-  s <- blockScript
-  modify $ \u -> u{ uzblBlockScript = s }
+setScriptInit :: UzblGlobal -> IO ()
+setScriptInit g = do
+  bs <- BS.pack . scriptSetBlocks =.< readMVar (uzblBlocks g)
+  writeIORef (uzblScriptInit g) $ BS.append scriptInit bs
 
-runScript :: Script -> UzblM ()
-runScript = run . script
+updateScriptInit :: UzblM ()
+updateScriptInit = io . setScriptInit . uzblGlobal =<< ask
 
-request :: String -> Script -> UzblM ()
+runScriptInit :: String -> UzblM ()
+runScriptInit r = do
+  si <- io . readIORef . uzblScriptInit . uzblGlobal =<< ask
+  debug $ "init " ++ r
+  h <- uzblHandle =.< ask
+  io $ hPutStr h "js " >> BS.hPut h si >> hPutStrLn h (r ++ "undefined")
+
+request :: String -> String -> UzblM ()
 request t s = do
   i <- uzblInstance =.< ask
-  run $ scriptRequest i t s
+  run $ "js " ++ scriptRequest i t s

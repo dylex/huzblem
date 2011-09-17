@@ -1,5 +1,9 @@
 *.hi
 *.o
 *.so
+*.jss
+jss
 huzblem
 pguri.sql
+block
+cookies.txt
