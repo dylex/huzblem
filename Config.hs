@@ -124,7 +124,7 @@ defaultConfig = Map.union (Map.fromAscList
   , ("download_handler",        ValStr $ "sync_spawn " ++ uzblHome "download" ++ " \\@download_dir")
   , ("enable_private",	        ValInt 0)
   , ("enable_spellcheck",	ValInt 0)
-  , ("link_number",             ValInt 1)
+  , ("link_number",             ValInt 0)
   , ("shell_cmd",		ValStr $ uzblHome "shell")
   , ("show_status",		ValInt 1)
   , ("status_top",		ValInt 0)
