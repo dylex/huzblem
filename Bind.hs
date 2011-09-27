@@ -11,6 +11,7 @@ import Control.Monad
 import Data.Char
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Time.LocalTime (LocalTime)
 
 import Util
 import Config
@@ -140,19 +141,29 @@ promptBlock b = do
     io $ modifyMVar_ bl (return . blockSet d b)
     updateScriptInit
 
-favorites :: Int -> UzblM ()
-favorites n = do
-  l <- take n =.< withDatabase browseFavorites
-  setVar "inject_html" $ ValStr $
-    "<html><head><title>Favorite history</title></head><body><table>\
+promptMark :: Bool -> UzblM ()
+promptMark f = do
+  u <- uzblURI
+  prompt (if f then "follow " else "mark ") u $
+    withDatabase . (`markAdd` f)
+
+listBrowse :: String -> [(String, Maybe String, Maybe LocalTime)] -> UzblM ()
+listBrowse h b = setVar "inject_html" $ ValStr $
+    "<html><head><title>" ++ h ++ "</title></head><body><table>\
     \<col width='175px'/><col/><tbody>"
-    ++ concatMap hr l
+    ++ concatMap br b
     ++ "</tbody></table></html>"
   where 
-  hr (u, t, l) = "<tr>\
-      \<td>" ++ show l ++ "</td>\
+  br (u, t, l) = "<tr>\
+      \<td>" ++ maybe "" show l ++ "</td>\
       \<td><a href='" ++ u ++ "'>" ++ mlEscape (fromMaybe u t) ++ "</a></td>\
     \</tr>"
+
+favorites :: Int -> UzblM ()
+favorites n = listBrowse "Favorite history" . take n =<< withDatabase browseFavorites
+
+marks :: UzblM ()
+marks = listBrowse "Marks" =<< withDatabase markList
 
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
@@ -183,6 +194,7 @@ commandBinds = Map.fromAscList $
   , ((0, "ISO_Left_Tab"), runScript $ scriptKeydown (modShift,"U+0009"))
   , ((0, "L"),		run "search_reverse")
   , ((0, "Left"),       scroll "horizontal" =<< scrlCount False)
+  , ((0, "M"),          promptMark True)
   , ((0, "O"),		uzblURI >>= \u -> prompt "uri " u goto)
   , ((0, "Page_Down"),	scroll "vertical" . (++"%") =<< scaleCount 100)
   , ((0, "Page_Up"),	scroll "vertical" . (++"%") =<< scaleCount (-100))
@@ -205,6 +217,7 @@ commandBinds = Map.fromAscList $
   , ((0, "h"),		scroll "horizontal" =<< scrlCount False)
   , ((0, "i"),		rawMode)
   , ((0, "l"),		run "search")
+  , ((0, "m"),          promptMark False)
   , ((0, "n"),		scroll "vertical" =<< scrlCount False)
   , ((0, "o"),		promptOpen)
   , ((0, "p"),          pasteURI)
@@ -218,13 +231,14 @@ commandBinds = Map.fromAscList $
   , ((0, "z"),		run "stop")
   , ((0, "{"),	        toggleOrCount "enable_spellcheck" onOff)
   , ((modMod1, "C"),	cookieSave)
+  , ((modMod1, "M"),    goto "~/.mozilla/bookmarks.html")
   , ((modMod1, "a"),	toggleOrCount "useragent" useragents) -- broken due to expansions...
   , ((modMod1, "b"),	promptBlock (Just False))
   , ((modMod1, "c"),	toggleBlock "cookie")
   , ((modMod1, "f"),	toggleBlock "iframe")
   , ((modMod1, "h"),	favorites . fromMaybe 50 =<< countMaybe)
   , ((modMod1, "i"),	toggleBlock "img")
-  , ((modMod1, "m"),    goto "~/.mozilla/bookmarks.html")
+  , ((modMod1, "m"),    marks)
   , ((modMod1, "p"),    toggleOrCount "enable_private" onOff)
   , ((modMod1, "s"),	toggleBlock "script")
   , ((modMod1, "t"),	promptBlock (Just True))

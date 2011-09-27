@@ -5,6 +5,7 @@ module PrefixMap
   , singleton
   , insert
   , delete
+  , alter
   , lookup
   , lookupPrefix
   , partition
@@ -17,11 +18,13 @@ import Prelude hiding (lookup, null)
 import Data.Function
 import qualified Data.List as List
 import qualified Data.Map as M
+import Data.Maybe
 
 import Safe
 
 import Util
 
+-- |A map in which each key is a list and no key is a prefix of any other key.
 data PrefixMap k a
   = Leaf a
   | Node (M.Map k (PrefixMap k a))
@@ -39,15 +42,18 @@ null :: PrefixMap k a -> Bool
 null (Node m) = M.null m
 null _ = False
 
-norm :: PrefixMap k a -> Maybe (PrefixMap k a)
-norm (Node m) | M.null m = Nothing
-norm d = Just d
+nonull :: PrefixMap k a -> Maybe (PrefixMap k a)
+nonull (Node m) | M.null m = Nothing
+nonull d = Just d
+
+renull :: Maybe (PrefixMap k a) -> PrefixMap k a
+renull = fromMaybe empty
 
 singleton :: [k] -> a -> PrefixMap k a
 singleton [] = Leaf
 singleton (n:d) = Node . M.singleton n . singleton d
 
--- |Insert a new entry to the map.  Any existing entries of which the given key is a prefix are removed.
+-- |Insert a new entry to the map.  Any existing conflicting entries (prefixes or elongations of the given key) are replaced.
 insert :: Ord k => [k] -> a -> PrefixMap k a -> PrefixMap k a
 insert [] x _ = Leaf x
 insert d x (Leaf _) = singleton d x
@@ -56,8 +62,18 @@ insert (n:d) x (Node m) = Node $ M.insertWith (\_ -> insert d x) n (singleton d 
 -- |Remove a single entry from the map, if present.
 delete :: Ord k => [k] -> PrefixMap k a -> PrefixMap k a
 delete [] (Leaf _) = empty
-delete (n:d) (Node m) = Node $ M.update (norm . delete d) n m
+delete (n:d) (Node m) = Node $ M.update (nonull . delete d) n m
 delete _ d = d
+
+-- |Modify, insert, or delete the value associated with a key.  Note that when the supplied update function is 'id' the map is not modified in any way and specifically conflicting entries are preserved.
+alter :: Ord k => (Maybe a -> Maybe a) -> [k] -> PrefixMap k a -> PrefixMap k a
+alter f [] (Leaf x)
+  | Just y <- f (Just x) = Leaf y
+  | otherwise = empty
+alter f (n:k) (Node m) = Node $ M.alter (nonull . alter f k . renull) n m
+alter f k t
+  | Just y <- f Nothing = singleton k y
+  | otherwise = t -- empty?
 
 -- |Lookup an exact key in the map.
 lookup :: Ord k => [k] -> PrefixMap k a -> Maybe a
