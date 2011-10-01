@@ -169,7 +169,7 @@ commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
   [ ((0, "#"),	        toggleOrCount "link_number" onOff)
   , ((0, "$"),	        scroll "horizontal" "end")
-  , ((0, "%"),	        toggleOrCount "disable_scripts" onOff)
+  , ((0, "%"),	        toggleOrCount "enable_scripts" onOff)
   , ((0, "&"),	        toggleOrCount "stylesheet_uri" stylesheets)
   , ((0, "+"),	        run "zoom_in")
   , ((0, "-"),		onCount
