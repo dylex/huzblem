@@ -31,7 +31,7 @@ BEGIN
 				CONTINUE;
 			END;
 		END IF;
-		UPDATE mark SET browse = i WHERE uri @> u;
+		UPDATE mark SET browse = i WHERE uri = u OR follow AND uri @> u;
 		RETURN i;
 	END LOOP;
 END;
@@ -45,7 +45,7 @@ DECLARE
 	f ALIAS FOR $2;
 	i INTEGER;
 BEGIN
-	SELECT id INTO i FROM browse WHERE uri <@ u ORDER BY last DESC;
+	SELECT id INTO i FROM browse WHERE uri = u OR f AND uri <@ u ORDER BY last DESC;
 	INSERT INTO mark (uri, follow, browse) VALUES (u, f, i) RETURNING id INTO i;
 	RETURN i;
 END;
