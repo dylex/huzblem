@@ -4,6 +4,7 @@ module Keys
   , modifierTest
   , modShift, modCtrl, modMod1, modMod4
   , bindMap
+  , (.|.)
   ) where
 
 import Data.Bits
@@ -53,7 +54,7 @@ modMod1 = modifier "Mod1"
 modMod4 = modifier "Mod4"
 
 modifierMask :: Mod
-modifierMask = modifiers ["Ctrl","Mod1","Mod4"]
+modifierMask = modifiers ["Shift","Ctrl","Mod1","Mod4"]
 
 modifierTest :: String -> Mod -> Bool
 modifierTest s m = maybe False (testBit m) $ modifierIndex s

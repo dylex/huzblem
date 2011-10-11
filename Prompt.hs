@@ -48,6 +48,9 @@ modifyInput f = modifyPrompt $ \p -> p{ promptInput = f $ promptInput p }
 promptInsert :: String -> UzblM ()
 promptInsert s = modifyInput $ first (reverse s++)
 
+pasteInput :: UzblM ()
+pasteInput = io paste >>= maybe nop promptInsert
+
 inputLeft :: Input -> Input
 inputLeft (c:il,ir) = (il,c:ir)
 inputLeft i = i
@@ -108,6 +111,7 @@ promptBinds = Map.fromAscList
   , ((0, "Tab"),        complete)
   , ((0, "Up"),         modify historyUp)
   , ((0, "space"),      promptInsert " ")
+  , ((modShift, "Insert"), pasteInput)
   , ((modCtrl, "n"),    modify $ historyFind True)
   , ((modCtrl, "t"),    modify $ historyFind False)
   , ((modCtrl, "u"),    modifyInput $ const ("",""))

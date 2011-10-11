@@ -39,6 +39,7 @@ data Options = Options
   , optionDebug :: Bool
   , optionConfig :: Config
   , optionBlocks :: FilePath
+  , optionDatabase :: String
   }
 
 defaultOptions :: Options
@@ -48,6 +49,7 @@ defaultOptions = Options
   , optionDebug = False
   , optionConfig = defaultConfig
   , optionBlocks = uzblHome "block"
+  , optionDatabase = "dbname=uzbl"
   }
 
 defaultSocket :: FilePath
@@ -70,7 +72,7 @@ options =
   , GetOpt.Option "" ["cookies"]
       (GetOpt.OptArg (\s o -> o{ optionCookies = s }) "FILE") 
       ("Load and use cookies from FILE [" ++ fromMaybe "NONE" (optionCookies defaultOptions) ++ "]")
-  , GetOpt.Option "d" ["debug"]
+  , GetOpt.Option "v" ["verbose"]
       (GetOpt.NoArg (\o -> o{ optionDebug = True }))
       ("Print out more log messages")
   , GetOpt.Option "s" ["set"]
@@ -79,6 +81,9 @@ options =
   , GetOpt.Option "p" ["private"]
       (GetOpt.NoArg (optionConfig' $ Map.insert "enable_private" (ValInt 1)))
       ("Private mode (equivalent to -s enable_private=1)")
+  , GetOpt.Option "d" ["database"]
+      (GetOpt.ReqArg (\s o -> o{ optionDatabase = s }) "CONN")
+      ("database connection info [" ++ optionDatabase defaultOptions ++ "]")
   ]
 
 main :: IO ()
@@ -124,7 +129,7 @@ main = do
   unless me exitSuccess
 
   clients <- newMVar Map.empty
-  db <- databaseOpen
+  db <- databaseOpen (optionDatabase opts)
   blocks <- (newMVar $!) =<< catchdne (loadBlocks (optionBlocks opts)) (return defaultBlocks)
   scriptinit <- newIORef (error "scripts uninit")
   let global = UzblGlobal

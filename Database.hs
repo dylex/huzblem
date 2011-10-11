@@ -30,17 +30,16 @@ data Database = Database
 
 data QueryType
   = BrowseAdd
-  | BrowseFind
   | BrowseFavorites
   | BrowseSetTitle
   | MarkAdd
   | MarkList
+  | BrowseFind
   deriving (Show, Eq, Ord, Bounded, Enum, Ix)
 
 queries :: [String]
 queries = 
   [ "SELECT browse_add(?, ?)"
-  , "SELECT uri FROM browse WHERE text(uri) LIKE '%' || ? || '%' ORDER BY last DESC LIMIT 1"
   , "SELECT text(uri), title, last FROM (SELECT uri, title, last, \
     \   sum(visits) OVER d as v, row_number() OVER d AS i \
     \ FROM browse WINDOW d AS (\
@@ -51,6 +50,10 @@ queries =
   , "SELECT COALESCE(browse.uri, mark.uri), browse.title, browse.last \
     \ FROM mark LEFT JOIN browse ON (mark.browse = browse.id) \
     \ ORDER BY last DESC"
+  , "SELECT COALESCE(browse.uri, mark.uri) \
+    \ FROM mark FULL JOIN browse ON (mark.browse = browse.id) \
+    \ WHERE text(coalesce(mark.uri, browse.uri)) LIKE '%' || ? || '%' \
+    \ ORDER BY mark.id IS NULL, browse.last DESC LIMIT 1"
   ]
 
 withQuery' :: QueryType -> (Statement -> IO a) -> Database -> IO a
@@ -89,9 +92,9 @@ markList = withQuery' MarkList $ \q -> do
   execute_ q []
   map (\[u,t,l] -> (fromSql u, fromSql t, fromSql l)) =.< fetchAllRows q
 
-databaseOpen :: IO Database
-databaseOpen = do
-  c <- connectPostgreSQL' "dbname=uzbl"
+databaseOpen :: String -> IO Database
+databaseOpen dbinfo = do
+  c <- connectPostgreSQL' dbinfo
   q <- mapM (newMVar <=< prepare c) queries
   return $ Database c $ listArray (minBound, maxBound) q
 
