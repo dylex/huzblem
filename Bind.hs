@@ -208,7 +208,7 @@ commandBinds = Map.fromAscList $
   , ((0, "space"),	scroll "vertical" . (++"%") =<< scaleCount 100)
   , ((0, "t"),		scroll "vertical" =<< scrlCount True)
   , ((0, "u"),		runArgs "forward" . return . show =<< count)
-  , ((0, "v"),		run "toggle_status")
+  , ((0, "v"),		toggleOrCount "show_status" onOff)
   , ((0, "y"),		onCount copyURI (request "COPY" . scriptLinkGet . Just))
   , ((0, "z"),		run "stop")
   , ((modShift, "#"),   toggleOrCount "link_number" onOff)
