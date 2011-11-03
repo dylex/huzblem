@@ -3,12 +3,13 @@ module URIs
   , expandURI
   ) where
 
+import Control.Monad
 import Data.Char
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
 
-import Text.URI
+import Network.URI
 
 import Config
 
@@ -16,7 +17,7 @@ okInArg :: Char -> Bool
 okInArg c = isAlphaNum c || c `elem` "!$'()*,/:"
 
 uriDomain :: String -> Maybe String
-uriDomain u = uriRegName =<< parseURI u
+uriDomain = fmap uriRegName . (uriAuthority <=< parseURI)
 
 inDomain :: String -> String -> Bool
 inDomain h d'@('.':d) = isSuffixOf d' h || h == d
@@ -27,7 +28,7 @@ uriInDomain u = maybe False (inDomain u) . uriDomain
 
 infixr 5 ?=
 (?=) :: String -> String -> String
-(?=) s = (++) s . escapeString okInArg
+(?=) s = (++) s . escapeURIString okInArg
 
 rewrites :: Map.Map String (String -> String)
 rewrites = Map.fromAscList

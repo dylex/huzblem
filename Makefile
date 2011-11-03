@@ -1,7 +1,7 @@
 default: huzblem init.jss all pguri.sql
 
 huzblem:
-	ghc --make -threaded -O -Wall $@.hs -i -i. -o $@
+	ghc --make -dynamic -threaded -O -Wall $@.hs -i -i. -o $@
 .PHONY: huzblem
 jss: jss.hs
 	ghc --make -O -Wall $< -i. -o $@
