@@ -37,8 +37,8 @@ infixr 1 =.<, .=<
 (.=<) :: Monad m => (b -> c) -> (a -> m b) -> a -> m c
 
 (>.) e r = e >> return r
-(>.=) e r = e >>= return . r
-(=.<) r e = return . r =<< e -- fmap, <$>, liftM
+(>.=) = flip liftM
+(=.<) = liftM -- fmap, <$>, liftM
 (>=.) e r = e >=> return . r
 (.=<) r e = return . r <=< e
 

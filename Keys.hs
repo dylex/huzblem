@@ -10,6 +10,7 @@ module Keys
 import Data.Bits
 import Data.List
 import qualified Data.Map as Map
+import Data.Maybe
 import Data.Word
 
 import Util
@@ -63,4 +64,4 @@ mask :: Mod -> ModKey -> ModKey
 mask f (m,k) = (m.&.f,k)
 
 bindMap :: Map.Map ModKey a -> (ModKey -> a) -> ModKey -> a
-bindMap m d k = maybe (d k) id $ Map.lookup (mask modifierMask k) m
+bindMap m d k = fromMaybe (d k) $ Map.lookup (mask modifierMask k) m

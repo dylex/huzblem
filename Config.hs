@@ -90,7 +90,7 @@ useragents = map ValStr
   ]
   where 
     uname = maybe "unknown" (head . lines) $ Unsafe.unsafeDupablePerformIO $ capture "uname" ["-sm"]
-    today = Time.formatTime defaultTimeLocale "%Y%m%d" $ Time.utctDay $ Unsafe.unsafeDupablePerformIO $ Time.getCurrentTime
+    today = Time.formatTime defaultTimeLocale "%Y%m%d" $ Time.utctDay $ Unsafe.unsafeDupablePerformIO Time.getCurrentTime
 
 -- |These variables are reset on start.  Any setting containing an expansion must be here.
 baseConfig :: Config
@@ -110,7 +110,7 @@ baseConfig = Map.fromAscList
 
 -- |These variables can be overridden and inherited by new windows.
 defaultConfig :: Config
-defaultConfig = Map.union (Map.fromAscList 
+defaultConfig = Map.fromAscList 
   [ ("autoload_images",         ValInt 1)
   , ("block_cookie",		ValInt $ fromEnum AllowTrusted)
   , ("block_embed",		ValInt $ fromEnum BlockAll)
@@ -133,7 +133,7 @@ defaultConfig = Map.union (Map.fromAscList
   , ("stylesheet_uri",		head stylesheets)
   , ("useragent",		head useragents)
   , ("zoom_type",		ValInt 0)
-  ]) baseConfig
+  ] `Map.union` baseConfig
 
 runUzbl :: FilePath -> Cookies -> Config -> Maybe String -> IO ()
 runUzbl sock cookies config uri = do

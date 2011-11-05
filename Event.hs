@@ -93,7 +93,7 @@ loadStart _ = badArgs
 
 blockScript :: UzblM String
 blockScript = do
-  bm <- mapM (\t -> ((,) t) . toEnum =.< getVarInt ("block_" ++ t)) bc
+  bm <- mapM (\t -> (,) t . toEnum =.< getVarInt ("block_" ++ t)) bc
   bv <- getVarInt "block_verbose"
   return $ scriptSetBlock (0 /= bv) $ bm ++ map (\t -> (t, BlockNone)) ba
   where 
@@ -134,7 +134,7 @@ loadProgress [sp]
 loadProgress _ = badArgs
 
 titleChanged :: [String] -> UzblM ()
-titleChanged ["(no title)"] = do
+titleChanged ["(no title)"] =
   setVar' "TITLE" ValNone
 titleChanged [t] = do
   u <- uzblURI
@@ -155,7 +155,7 @@ downloadComplete _ = badArgs
 
 events :: Map.Map Event ([String] -> UzblM ())
 events = Map.fromAscList $ 
-  map (first Event) (
+  map (first Event)
   [ ("ADD_COOKIE",	addCookie)
   , ("COMMAND_ERROR",	commandError)
   , ("COMMAND_EXECUTED",commandExecuted)
@@ -173,11 +173,11 @@ events = Map.fromAscList $
   , ("SOCKET_SET",	socketSet) 
   , ("TITLE_CHANGED",	titleChanged) 
   , ("VARIABLE_SET",	variableSet) 
-  ]) ++ 
-  map (\(r,f) -> (Request r, f . head)) (
+  ] ++ 
+  map (\(r,f) -> (Request r, f . head)) 
   [ ("COPY",            io . copy)
   , ("WINDOW",          newUzbl . Just)
-  ])
+  ]
 
 event :: Event -> [String] -> UzblM ()
 event ev args = maybe nop

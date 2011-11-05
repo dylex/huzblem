@@ -40,11 +40,11 @@ emptyCookies = Set.empty
 
 parseElinksCookie :: String -> Maybe Cookie
 parseElinksCookie = pec . splitOn ('\t'==) where
-  pec [name, value, _server, path, domain, expire, secure] = Just $ Cookie
+  pec [name, value, _server, path, domain, expire, secure] = Just Cookie
     { cookieDomain = BS.pack $ '.':domain
-    , cookiePath = BS.pack $ path
-    , cookieName = BS.pack $ name
-    , cookieValue = BS.pack $ value
+    , cookiePath = BS.pack path
+    , cookieName = BS.pack name
+    , cookieValue = BS.pack value
     , cookieSecure = secure /= "0"
     , cookieHttpOnly = False
     , cookieExpire = fmap fromInteger $ readMay expire
@@ -53,11 +53,11 @@ parseElinksCookie = pec . splitOn ('\t'==) where
 
 parseCookieTxt :: String -> Maybe Cookie
 parseCookieTxt = pc . splitOn ('\t'==) where
-  pc [domain, _flag, path, secure, expire, name, value] = Just $ Cookie
+  pc [domain, _flag, path, secure, expire, name, value] = Just Cookie
     { cookieDomain = BS.pack $ fromMaybe domain hod
-    , cookiePath = BS.pack $ path
-    , cookieName = BS.pack $ name
-    , cookieValue = BS.pack $ value
+    , cookiePath = BS.pack path
+    , cookieName = BS.pack name
+    , cookieValue = BS.pack value
     , cookieSecure = secure `notElem` ["FALSE","0"]
     , cookieHttpOnly = isJust hod
     , cookieExpire = fmap fromInteger $ readMay expire
@@ -65,11 +65,11 @@ parseCookieTxt = pc . splitOn ('\t'==) where
   pc _ = Nothing
 
 argCookie :: [String] -> Maybe Cookie
-argCookie [domain,path,name,value,scheme,expire] = Just $ Cookie
-  { cookieDomain = BS.pack $ domain
-  , cookiePath = BS.pack $ path
-  , cookieName = BS.pack $ name
-  , cookieValue = BS.pack $ value
+argCookie [domain,path,name,value,scheme,expire] = Just Cookie
+  { cookieDomain = BS.pack domain
+  , cookiePath = BS.pack path
+  , cookieName = BS.pack name
+  , cookieValue = BS.pack value
   , cookieSecure = "https" `isPrefixOf` scheme
   , cookieHttpOnly = "Only" `isSuffixOf` scheme
   , cookieExpire = guard (not $ null expire) >> readMay expire >.= fromInteger
@@ -82,7 +82,7 @@ cookieExpires = maybe "" ((show :: Integer -> String) . round) . cookieExpire
 
 writeCookieTxt :: Cookie -> Maybe String
 writeCookieTxt Cookie{ cookieExpire = Nothing } = Nothing
-writeCookieTxt c = Just $ intercalate "\t" $
+writeCookieTxt c = Just $ intercalate "\t"
   [ (guard (cookieHttpOnly c) >> "#HttpOnly_") ++ BS.unpack (cookieDomain c)
   , tf $ not (BS.null (cookieDomain c)) && BS.head (cookieDomain c) == '.'
   , BS.unpack $ cookiePath c

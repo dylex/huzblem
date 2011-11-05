@@ -2,12 +2,15 @@ default: huzblem init.jss all pguri.sql
 
 huzblem:
 	ghc --make -dynamic -threaded -O -Wall $@.hs -i -i. -o $@
-.PHONY: huzblem
 jss: jss.hs
 	ghc --make -O -Wall $< -i. -o $@
 %.jss: %.js jss
 	./jss < $< > $@
 
+hlint:
+	hlint -c .
+
+.PHONY: huzblem hlint
 EXTRA_CLEAN = *.o *.hi huzblem
 
 MODULES = pguri

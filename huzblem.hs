@@ -147,10 +147,10 @@ main = do
   wait <- newQSem 0
   let up = atomicModifyIORef sem (\i -> (succ i, ()))
       down = do
-        i <- atomicModifyIORef sem (\i -> (pred i, pred i))
+        i <- atomicModifyIORef sem (join (,) . pred)
         when (i == 0) $ signalQSem wait
 
-  void $ forkIO $ forever $ accept s >>= \r -> do
+  void $ forkIO $ forever $ accept s >>= \r ->
     void $ forkIO $ bracket_ up down (client global r)
   void $ forkIO $ do
     threadDelay 5000000

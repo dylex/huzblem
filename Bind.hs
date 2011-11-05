@@ -58,7 +58,7 @@ promptComplete :: String -> String -> (String -> UzblM (Maybe String)) -> (Strin
 promptComplete p i c e = promptMode p i c ((>>) commandMode . maybe nop e)
 
 prompt :: String -> String -> (String -> UzblM ()) -> UzblM ()
-prompt p i e = promptComplete p i (const $ return Nothing) e
+prompt p i = promptComplete p i (const $ return Nothing)
 
 commandCompleter :: Completer
 commandCompleter = f . breakStrip isSpace where
@@ -255,7 +255,7 @@ commandMode = do
   status ""
   setVar "command_count" $ ValStr ""
   run "search_clear"
-  modifyBindings $ const $ Command{ commandCount = Nothing }
+  modifyBindings $ const Command{ commandCount = Nothing }
 
 runBind :: Bindings -> ModKey -> UzblM ()
 runBind Command{} = commandBind

@@ -136,7 +136,7 @@ promptBind mk = do
 
 promptMode :: String -> String -> Completer -> (Maybe String -> UzblM ()) -> UzblM ()
 promptMode p i c e = do
-  modifyBindings $ const $ Prompt
+  modifyBindings $ const Prompt
     { promptPrompt = p
     , promptInput = unInput i
     , promptCompleter = c
