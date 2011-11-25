@@ -29,7 +29,7 @@ unInput s = (reverse s, "")
 
 promptStop :: UzblM ()
 promptStop = do
-  UzblState{ uzblBindings = p } <- get
+  p <- gets uzblBindings
   promptExec p Nothing
 
 promptRun :: UzblM ()
@@ -122,7 +122,7 @@ setPrompt :: String -> UzblM ()
 setPrompt = setVar "status_message" . ValStr
 
 promptUpdate :: UzblM ()
-promptUpdate = pu . uzblBindings =<< get where
+promptUpdate = pu =<< gets uzblBindings where
   pu Prompt{ promptPrompt = p, promptInput = (il,ir) } =
     setPrompt $ "<span bgcolor='#000'>" ++ p ++ "<span face='monospace'>" 
       ++ mlEscape (reverse il) ++ "<span face='sans'>|</span>" ++ mlEscape ir 

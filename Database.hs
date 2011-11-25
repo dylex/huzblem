@@ -41,10 +41,10 @@ queries :: [String]
 queries = 
   [ "SELECT browse_add(?, ?)"
   , "SELECT text(uri), title, last FROM (SELECT uri, title, last, \
-    \   sum(visits) OVER d as v, row_number() OVER d AS i \
+    \   row_number() OVER d AS i \
     \ FROM browse WINDOW d AS (\
     \   PARTITION BY (uri).domain ORDER BY last DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING \
-    \ )) b WHERE i = 1 ORDER BY v DESC"
+    \ )) b WHERE i = 1 ORDER BY last DESC"
   , "UPDATE browse SET title = ? WHERE uri = ?::uri"
   , "SELECT mark_add(?, ?)"
   , "SELECT COALESCE(browse.uri, mark.uri), browse.title, browse.last \

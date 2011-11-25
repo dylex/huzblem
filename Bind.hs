@@ -51,7 +51,7 @@ search rev s = run $ "search" ++ (guard rev >> "_reverse") ++ ' ' : escape s
 
 cookieSave :: UzblM ()
 cookieSave = do
-  io . saveCookiesTxt (uzblHome "cookies.txt") . uzblCookies =<< get
+  io . saveCookiesTxt (uzblHome "cookies.txt") =<< gets uzblCookies
   status "cookies saved"
 
 promptComplete :: String -> String -> (String -> UzblM (Maybe String)) -> (String -> UzblM ()) -> UzblM ()
@@ -64,7 +64,7 @@ commandCompleter :: Completer
 commandCompleter = f . breakStrip isSpace where
   f (c,"") = return $ completerSet commands c
   f ("set",vv) | (v,"") <- breakStrip (\x -> '=' == x || isSpace x) vv = do
-    vl <- uzblVariables =.< get
+    vl <- gets uzblVariables
     return $ maybe
       ((\x -> "set " ++ x ++ "=") =.< completerSet (Map.keysSet vl) v)
       (\x -> Just $ "set " ++ v ++ "=" ++ showValue x) $ Map.lookup v vl
@@ -92,7 +92,7 @@ digit i = do
 zero :: UzblM ()
 zero = maybe 
   (scroll "vertical" "begin")
-  (const $ digit 0) . commandCount . uzblBindings =<< get
+  (const $ digit 0) =<< gets (commandCount . uzblBindings)
 
 countMaybe :: UzblM (Maybe Int)
 countMaybe = do
@@ -137,7 +137,7 @@ promptBlock :: Maybe Bool -> UzblM ()
 promptBlock b = do
   u <- uzblURI
   prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (fromMaybe "" $ uriDomain u) $ \d -> do
-    bl <- uzblBlocks . uzblGlobal =.< ask
+    bl <- asks (uzblBlocks . uzblGlobal)
     io $ modifyMVar_ bl (return . blockSet d b)
     updateScriptInit
 

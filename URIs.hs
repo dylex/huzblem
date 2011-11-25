@@ -38,6 +38,7 @@ rewrites = Map.fromAscList
   , ("fm",	("http://www.freshmeat.net/search/?q=" ?=))
   , ("g",	("http://www.google.com/search?q=" ?=))
   , ("gi",	("http://images.google.com/images?q=" ?=))
+  , ("gm",      ("http://maps.google.com/maps?q=" ?=))
   , ("gn",	("http://news.google.com/news?q=" ?=))
   , ("gs",	("http://scholar.google.com/scholar?q=" ?=))
   , ("hdb",	("http://hackage.haskell.org/package/" ?=))

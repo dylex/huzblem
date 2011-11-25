@@ -53,7 +53,7 @@ socketSet [sock] = modify $ \u -> u { uzblSocket = Just sock }
 socketSet _ = badArgs
 
 keyPress :: [String] -> UzblM ()
-keyPress [md,key] = flip runBind (readModifiers md, key) . uzblBindings =<< get 
+keyPress [md,key] = flip runBind (readModifiers md, key) =<< gets uzblBindings
 keyPress _ = badArgs
 
 newWindow :: [String] -> UzblM ()
@@ -64,7 +64,7 @@ allow :: IsDomain s => String -> s -> UzblM Bool
 allow bt dom = do
   b <- toEnum =.< getVarInt ("block_" ++ bt)
   c <- uriDomain =.< uzblURI
-  bl <- io . readMVar . uzblBlocks . uzblGlobal =<< ask
+  bl <- io . readMVar =<< asks (uzblBlocks . uzblGlobal)
   return $ blockTest bl c b dom
 
 acceptCookie :: Cookie -> UzblM Bool

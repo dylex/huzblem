@@ -8,7 +8,7 @@ module Uzbl
   , Bindings(..)
   , Input, Completer
 
-  , ask, modify, get, put
+  , ask, asks, modify, get, gets, put
   , io
   , log, logPrint, debug
   , run, runArgs, runOthers
@@ -141,7 +141,7 @@ log s = do
 
 debug :: (MonadReader UzblClient m, MonadIO m) => String -> m ()
 debug s = do
-  d <- uzblDebug . uzblGlobal =.< ask
+  d <- asks (uzblDebug . uzblGlobal)
   when d $ log s
 
 logPrint :: Show a => a -> UzblM ()
@@ -150,7 +150,7 @@ logPrint = log . show
 run :: (MonadReader UzblClient m, MonadIO m) => String -> m ()
 run s = do
   debug $ "run " ++ s
-  h <- uzblHandle =.< ask
+  h <- asks uzblHandle
   liftIO $ hPutStrLn h s
 
 runArgs :: (MonadReader UzblClient m, MonadIO m) => String -> [String] -> m ()
@@ -162,7 +162,7 @@ runOthers r a = ask >>= \ct -> liftIO $
     readMVar (uzblemClients (uzblGlobal ct))
 
 getVar :: Variable -> UzblM Value
-getVar var = fromMaybe ValNone . Map.lookup var . uzblVariables =.< get
+getVar var = gets $ fromMaybe ValNone . Map.lookup var . uzblVariables
 
 getVarStr :: Variable -> UzblM String
 getVarStr var = showValue =.< getVar var
@@ -212,7 +212,7 @@ modifyBindings :: (Bindings -> Bindings) -> UzblM ()
 modifyBindings f = modify $ \u -> u{ uzblBindings = f $ uzblBindings u }
 
 withDatabase :: (Database -> IO a) -> UzblM a
-withDatabase f = io . f . uzblDatabase . uzblGlobal =<< ask
+withDatabase f = io . f =<< asks (uzblDatabase . uzblGlobal)
 
 newUzbl :: Maybe String -> UzblM ()
 newUzbl uri = do
@@ -233,16 +233,16 @@ setScriptInit g = do
   writeIORef (uzblScriptInit g) $ BS.append scriptInit bs
 
 updateScriptInit :: UzblM ()
-updateScriptInit = io . setScriptInit . uzblGlobal =<< ask
+updateScriptInit = io . setScriptInit =<< asks uzblGlobal
 
 runScriptInit :: String -> UzblM ()
 runScriptInit r = do
-  si <- io . readIORef . uzblScriptInit . uzblGlobal =<< ask
+  si <- io . readIORef . uzblScriptInit =<< asks uzblGlobal
   debug $ "init " ++ r
-  h <- uzblHandle =.< ask
+  h <- asks uzblHandle
   io $ hPutStr h "js " >> BS.hPut h si >> hPutStrLn h (r ++ "undefined")
 
 request :: String -> String -> UzblM ()
 request t s = do
-  i <- uzblInstance =.< ask
+  i <- asks uzblInstance
   run $ "js " ++ scriptRequest i t s
