@@ -7,7 +7,8 @@ CREATE OR REPLACE FUNCTION domainname_send(domainname) 	RETURNS bytea 	   LANGUA
 
 CREATE TYPE domainname (LIKE = text,
 	INPUT = domainname_in, OUTPUT = domainname_out,
-	RECEIVE = domainname_recv, SEND = domainname_send
+	RECEIVE = domainname_recv, SEND = domainname_send,
+	COLLATABLE = true
 );
 
 --CREATE CAST (text AS domainname) WITHOUT FUNCTION;
@@ -72,7 +73,7 @@ CREATE OR REPLACE FUNCTION domainname_parts(domainname) RETURNS text[] LANGUAGE 
 
 
 CREATE TYPE uri AS (
-	domain	domainname,
+	domain	domainname COLLATE "C",
 	port	SMALLINT,
 	path	TEXT,
 	scheme	TEXT
