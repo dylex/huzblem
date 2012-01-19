@@ -215,6 +215,7 @@ commandBinds = Map.fromAscList $
   , ((modShift, "$"),   scroll "horizontal" "end")
   , ((modShift, "%"),   toggleOrCount "enable_scripts" onOff)
   , ((modShift, "&"),   toggleOrCount "stylesheet_uri" stylesheets)
+  , ((modShift, "*"),   toggleOrCount "enable_webgl" onOff)
   , ((modShift, "+"),   run "zoom_in")
   , ((modShift, ":"),   promptComplete ":" "" commandCompleter $ \c -> run c)
   , ((modShift, "?"),   prompt "?" "" $ search True)
