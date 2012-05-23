@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Bind 
   ( commandMode
   , rawMode
@@ -199,7 +200,7 @@ commandBinds = Map.fromAscList $
   , ((0, "h"),		scroll "horizontal" =<< scrlCount False)
   , ((0, "i"),		rawMode)
   , ((0, "l"),		run "search")
-  , ((0, "m"),          promptMark False)
+  , ((0, "m"),          marks)
   , ((0, "n"),		scroll "vertical" =<< scrlCount False)
   , ((0, "o"),		promptOpen)
   , ((0, "p"),          pasteURI)
@@ -224,20 +225,21 @@ commandBinds = Map.fromAscList $
   , ((modShift, "G"),	scroll "vertical" "end")
   , ((modShift, "ISO_Left_Tab"),  runScript $ scriptKeydown (modShift,"U+0009"))
   , ((modShift, "L"),	run "search_reverse")
-  , ((modShift, "M"),   promptMark True)
+  , ((modShift, "M"),   goto "~/.mozilla/bookmarks.html")
   , ((modShift, "O"),	uzblURI >>= \u -> prompt "uri " u goto)
   , ((modShift, "Q"),	run "exit")
   , ((modShift, "R"),	run "reload_ign_cache")
   , ((modShift, "^"),	scroll "horizontal" "begin")
   , ((modShift, "_"),	run "zoom_out")
   , ((modShift, "{"),	toggleOrCount "enable_spellcheck" onOff)
+  , ((modCtrl, "m"),    promptMark True)
   , ((modMod1, "a"),	toggleOrCount "useragent" useragents) -- broken due to expansions...
   , ((modMod1, "b"),	promptBlock (Just False))
   , ((modMod1, "c"),	toggleBlock "cookie")
   , ((modMod1, "f"),	toggleBlock "iframe")
   , ((modMod1, "h"),	favorites . fromMaybe 50 =<< countMaybe)
   , ((modMod1, "i"),	toggleBlock "img")
-  , ((modMod1, "m"),    marks)
+  , ((modMod1, "m"),    promptMark False)
   , ((modMod1, "p"),    toggleOrCount "enable_private" onOff)
   , ((modMod1, "s"),	toggleBlock "script")
   , ((modMod1, "t"),	promptBlock (Just True))
@@ -245,7 +247,6 @@ commandBinds = Map.fromAscList $
   , ((modMod1, "v"),	toggleOrCount "block_verbose" onOff)
   , ((modMod1, "x"),    setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
   , ((modShift .|. modMod1, "C"), cookieSave)
-  , ((modShift .|. modMod1, "M"), goto "~/.mozilla/bookmarks.html")
   ]
 
 commandBind :: ModKey -> UzblM ()
