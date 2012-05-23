@@ -102,7 +102,7 @@ promptBinds = Map.fromAscList
   [ ((0, "BackSpace"),  modifyInput $ first tailSafe)
   , ((0, "Delete"),     modifyInput $ second tailSafe)
   , ((0, "Down"),       modify historyDown)
-  , ((0, "End"),        modifyInput $ \i -> (input (swap i),""))
+  , ((0, "End"),        modifyInput $ \(a,b) -> (input (b,a),""))
   , ((0, "Escape"),     promptStop)
   , ((0, "Home"),       modifyInput $ (,) "" . input)
   , ((0, "Left"),       modifyInput inputLeft)
