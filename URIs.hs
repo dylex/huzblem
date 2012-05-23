@@ -33,7 +33,7 @@ infixr 5 ?=
 rewrites :: Map.Map String (String -> String)
 rewrites = Map.fromAscList
   [ ("amg",     ("http://www.allmusic.com/search/artist/" ?=))
-  , ("dd",      ("http://duckduckgo.com/?kp=-1&q=" ?=))
+  , ("dd",      ("http://duckduckgo.com/html/?kp=-1&q=" ?=))
   , ("dict",	("http://dictionary.reference.com/search?q=" ?=))
   , ("fm",	("http://www.freshmeat.net/search/?q=" ?=))
   , ("g",	("http://www.google.com/search?q=" ?=))
@@ -48,7 +48,6 @@ rewrites = Map.fromAscList
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
   , ("rfc",	("http://tools.ietf.org/html/rfc" ?=)) -- "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt"
-  , ("s",	("http://www.scroogle.org/cgi-bin/nbbw.cgi?Gw=" ?=))
   , ("thes",	("http://thesaurus.reference.com/search?q=" ?=))
   , ("trackdhl", ("http://track.dhl-usa.com/TrackByNbr.asp?ShipmentNumber=" ?=))
   , ("trackfedex", ("http://www.fedex.com/cgi-bin/tracking?action=track&language=english&last_action=alttrack&ascend_header=1&cntry_code=us&initial=x&mps=y&tracknumbers=" ?=))
@@ -60,7 +59,7 @@ rewrites = Map.fromAscList
   ]
 
 defaultRewrite :: String -> String
-defaultRewrite = rewrites Map.! "s"
+defaultRewrite = rewrites Map.! "dd"
 
 expandURI :: String -> String
 expandURI "" = "about:blank"
