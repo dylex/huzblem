@@ -246,7 +246,8 @@ commandBinds = Map.fromAscList $
   , ((modMod1, "u"),	promptBlock Nothing)
   , ((modMod1, "v"),	toggleOrCount "block_verbose" onOff)
   , ((modMod1, "x"),    setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
-  , ((modShift .|. modMod1, "C"), cookieSave)
+  , ((modShift .|. modMod1, "C"), toggleOrCount "cookie_policy" $ map ValInt [1,2,0])
+  , ((modCtrl .|. modMod1, "c"), cookieSave)
   ]
 
 commandBind :: ModKey -> UzblM ()

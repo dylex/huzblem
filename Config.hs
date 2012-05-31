@@ -119,6 +119,7 @@ defaultConfig = Map.fromAscList
   , ("block_script",		ValInt $ fromEnum AllowTrusted)
   , ("block_verbose",		ValInt 1)
   , ("caret_browsing",		ValInt 1)
+  , ("cookie_policy",           ValInt 2)
   , ("developer_extras",	ValInt 1)
   , ("dns_prefetching",	        ValInt 0)
   , ("enable_plugins",		ValInt 0)
