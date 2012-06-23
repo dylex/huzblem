@@ -178,6 +178,8 @@ commandBinds = Map.fromAscList $
   ] ++
   [ ((0, "="),		setVar "zoom_level" (ValFloat 1))
   , ((0, "Button2"),	button2)
+  , ((0, "Button8"),	run "back")
+  , ((0, "Button9"),	pasteURI)
   , ((0, "Down"),	scroll "vertical" =<< scrlCount True)
   , ((0, "End"),	scroll "vertical" "end")
   , ((0, "Escape"),	commandMode)
