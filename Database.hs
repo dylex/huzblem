@@ -95,6 +95,7 @@ markList = withQuery' MarkList $ \q -> do
 databaseOpen :: String -> IO Database
 databaseOpen dbinfo = do
   c <- connectPostgreSQL' dbinfo
+  _ <- sRun c "SET search_path = uzbl, public, global" []
   q <- mapM (newMVar <=< prepare c) queries
   return $ Database c $ listArray (minBound, maxBound) q
 

@@ -1,21 +1,23 @@
-CREATE TABLE browse (
+CREATE SCHEMA uzbl;
+
+CREATE TABLE uzbl.browse (
 	id	serial PRIMARY KEY,
 	uri	uri UNIQUE NOT NULL,
 	title	text,
 	last	timestamp (0) NOT NULL DEFAULT now(),
 	visits	integer NOT NULL DEFAULT 1
 );
-CREATE INDEX browse_domain_idx ON browse (((uri).domain));
+CREATE INDEX browse_domain_idx ON uzbl.browse (((uri).domain));
 
-CREATE TABLE mark (
+CREATE TABLE uzbl.mark (
 	id	serial PRIMARY KEY,
 	uri	uri UNIQUE NOT NULL,
 	follow	boolean NOT NULL,
-	browse	integer REFERENCES browse
+	browse	integer REFERENCES uzbl.browse
 );
-CREATE INDEX mark_domain_idx ON mark (((uri).domain));
+CREATE INDEX mark_domain_idx ON uzbl.mark (((uri).domain));
 
-CREATE OR REPLACE FUNCTION browse_add(uri, text) RETURNS integer LANGUAGE plpgsql STRICT AS
+CREATE OR REPLACE FUNCTION uzbl.browse_add(uri, text) RETURNS integer LANGUAGE plpgsql STRICT AS
 $$
 DECLARE
 	u ALIAS FOR $1;
@@ -38,7 +40,7 @@ END;
 $$
 ;
 
-CREATE OR REPLACE FUNCTION mark_add(uri, boolean) RETURNS integer LANGUAGE plpgsql STRICT AS
+CREATE OR REPLACE FUNCTION uzbl.mark_add(uri, boolean) RETURNS integer LANGUAGE plpgsql STRICT AS
 $$
 DECLARE
 	u ALIAS FOR $1;
