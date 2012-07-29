@@ -7,7 +7,6 @@ import Control.Monad
 import Data.Char
 import Data.List
 import qualified Data.Map as Map
-import Data.Maybe
 
 import Network.URI
 
@@ -26,9 +25,16 @@ inDomain h d = h == d || isSuffixOf ('.':d) h
 uriInDomain :: String -> String -> Bool
 uriInDomain u = maybe False (inDomain u) . uriDomain
 
+escapeURIChar' :: (Char -> Bool) -> Char -> String
+escapeURIChar' p ' ' | not (p ' ') = "+"
+escapeURIChar' p c = escapeURIChar p c
+
+escapeURIString' :: (Char -> Bool) -> String -> String
+escapeURIString' = concatMap . escapeURIChar'
+
 infixr 5 ?=
 (?=) :: String -> String -> String
-(?=) s = (++) s . escapeURIString okInArg
+(?=) s = (++) s . escapeURIString' okInArg
 
 rewrites :: Map.Map String (String -> String)
 rewrites = Map.fromAscList
