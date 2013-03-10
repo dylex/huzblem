@@ -49,7 +49,7 @@ defaultOptions = Options
   , optionDebug = False
   , optionConfig = defaultConfig
   , optionBlocks = uzblHome "block"
-  , optionDatabase = "dbname=uzbl"
+  , optionDatabase = ""
   }
 
 defaultSocket :: FilePath
