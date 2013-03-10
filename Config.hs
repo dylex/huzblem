@@ -85,7 +85,7 @@ stylesheets = map (ValStr . ("file://" ++) . uzblHome) ["plain.css", "style.css"
 useragents :: [Value]
 useragents = map ValStr 
   [ "Uzbl (X11; " ++ uname ++ ") WebKit/@{WEBKIT_MAJOR}.@{WEBKIT_MINOR}"
-  , "Mozilla/5.0 (X11; " ++ uname ++ ") AppleWebKit/555 (KHTML, like Gecko) Safari/555"
+  , "Mozilla/5.0 (X11; " ++ uname ++ ") AppleWebKit/555 (KHTML, like Gecko) Chrome/25 Safari/555"
   , "Mozilla/5.0 (X11; " ++ uname ++ "; rv:5.5) Gecko/" ++ today ++ " Firefox/5.5"
   ]
   where 
@@ -95,9 +95,9 @@ useragents = map ValStr
 -- |These variables are reset on start.  Any setting containing an expansion must be here.
 baseConfig :: Config
 baseConfig = Map.fromAscList
-  [ ("fifo_dir",		ValStr $ uzblHome "")
+  [ ("fifo_dir",		ValStr "/tmp")
   , ("forward_keys",		ValInt 0)
-  , ("socket_dir",		ValStr $ uzblHome "")
+  , ("socket_dir",		ValStr "/tmp")
   , ("status_background",	ValStr "#AAA")
   , ("status_format",		ValStr "<span bgcolor='#8CC' color='#000'>\\@command_count</span>\\@status_message<span color='#440'>\\@[\\@SELECTED_URI]\\@</span>")
   , ("status_format_right",	ValStr "<span color='#FFF' bgcolor='\\@status_load_color'>\\@status_load</span> <span color='#08F'>\\@[\\@uri]\\@</span>")
