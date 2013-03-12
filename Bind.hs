@@ -137,7 +137,7 @@ toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [minBoun
 promptBlock :: Maybe Bool -> UzblM ()
 promptBlock b = do
   u <- uzblURI
-  prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (fromMaybe "" $ uriDomain u) $ \d -> do
+  prompt (maybe "unblock " (\t -> if t then "trust " else "block ") b) (fromMaybe "" $ uriDomain u) $ \d -> unless (null d) $ do
     bl <- asks (uzblBlocks . uzblGlobal)
     io $ modifyMVar_ bl (return . blockSet d b)
     updateScriptInit
