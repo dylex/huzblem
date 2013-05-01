@@ -124,7 +124,7 @@ setPrompt = setVar "status_message" . ValStr
 promptUpdate :: UzblM ()
 promptUpdate = pu =<< gets uzblBindings where
   pu Prompt{ promptPrompt = p, promptInput = (il,ir) } =
-    setPrompt $ "<span bgcolor='#000'>" ++ p ++ "<span face='monospace'>" 
+    setPrompt $ "<span bgcolor='#000' color='#CCC'>" ++ p ++ "<span face='monospace'>" 
       ++ mlEscape (reverse il) ++ "<span face='sans'>|</span>" ++ mlEscape ir 
       ++ "</span></span>"
   pu _ = setPrompt ""
