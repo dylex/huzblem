@@ -53,6 +53,7 @@ rewrites = Map.fromAscList
   , ("math",	("http://mathworld.wolfram.com/search/?query=" ?=))
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
+  , ("om",	("http://openstreetmap.org/?query=" ?=))
   , ("rfc",	("http://tools.ietf.org/html/rfc" ?=)) -- "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt"
   , ("thes",	("http://thesaurus.reference.com/search?q=" ?=))
   , ("trackdhl", ("http://track.dhl-usa.com/TrackByNbr.asp?ShipmentNumber=" ?=))
