@@ -9,7 +9,6 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
-import Data.Tuple
 
 import Safe
 

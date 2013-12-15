@@ -10,8 +10,10 @@ import Prelude hiding (log)
 import Control.Concurrent.MVar
 import Control.Monad
 import Data.Char
+import Data.List (isPrefixOf)
 import qualified Data.Map as Map
 import Data.Maybe
+import qualified Data.Time
 import Data.Time.LocalTime (LocalTime)
 
 import Util
@@ -166,6 +168,28 @@ favorites n = listBrowse "Favorite history" . take n =<< withDatabase browseFavo
 marks :: UzblM ()
 marks = listBrowse "Marks" =<< withDatabase markList
 
+improbableIslandKey :: ModKey -> UzblM ()
+improbableIslandKey mk = do
+  go mk =<< gets uzblLastLoad
+  modifyBindings bindingsReturn
+  resetVar "status_background"
+  where
+    go (0,[k]) (Just (p, l)) | isLower k || isDigit k = do
+      modify $ \s -> s{ uzblLastLoad = Nothing }
+      t <- io Data.Time.getCurrentTime
+      let dt = Data.Time.diffUTCTime t l
+      runScript $ scriptImprobableIslandKey p dt k
+      status ("scheduled: " ++ [k])
+    go _ _ = do
+      status "aborted"
+captureImprobableIslandKey :: UzblM ()
+captureImprobableIslandKey = do
+  u <- uzblURI
+  when ("http://www.improbableisland.com/" `isPrefixOf` u) $ do
+    status "schedule:"
+    setVar "status_background" $ ValStr "#CC0"
+    modifyBindings $ Capture improbableIslandKey
+
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
   [ ((0, "-"),		onCount
@@ -194,6 +218,7 @@ commandBinds = Map.fromAscList $
   , ((0, "["),		linkSelect "prev" $ Just "\\\\bprev|^<")
   , ((0, "\\"),		toggleOrCount "view_source" onOff >> run "reload")
   , ((0, "]"),		linkSelect "next" $ Just "\\\\bnext|>$")
+  , ((0, "`"),	        captureImprobableIslandKey)
   , ((0, "a"),		promptURI (newUzbl . Just))
   , ((0, "e"),		runArgs "back" . return . show =<< count)
   , ((0, "f"),		onCount 
@@ -226,6 +251,7 @@ commandBinds = Map.fromAscList $
   , ((modShift, "A"),	uzblURI >>= \u -> prompt "uri " u (newUzbl . Just))
   , ((modShift, "G"),	scroll "vertical" "end")
   , ((modShift, "ISO_Left_Tab"),  runScript $ scriptKeydown (modShift,"U+0009"))
+  , ((modShift, "J"),   prompt "js " "" $ run . ("js " ++))
   , ((modShift, "L"),	run "search_reverse")
   , ((modShift, "M"),   goto "~/.mozilla/bookmarks.html")
   , ((modShift, "O"),	uzblURI >>= \u -> prompt "uri " u goto)
@@ -266,3 +292,4 @@ runBind :: Bindings -> ModKey -> UzblM ()
 runBind Command{} = commandBind
 runBind PassThrough{} = rawBind
 runBind Prompt{} = promptBind
+runBind Capture{ captureFun = f } = f

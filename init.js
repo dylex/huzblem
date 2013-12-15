@@ -43,15 +43,14 @@ var huzbl = {
 			console.log((res ? "allowing" : "blocking") + " " + type + " " + src);
 		return res;
 	},
-	beforeload : function(event) {
-		if (!huzbl.blockTest(event.target.tagName, event.target.src)) {
-			event.preventDefault();
-			event.target.parentNode.removeChild(event.target);
-		} else if (event.target.tagName.toUpperCase() === "IFRAME")
-			huzbl.addEvents(event.target.contentDocument); /* this does not work, possibly because the document hasn't started loading yet */
-	},
 	addEvents : function(doc) {
-		doc.addEventListener("beforeload", huzbl.beforeload, true);
+		doc.addEventListener("beforeload", function(event) {
+			if (!huzbl.blockTest(event.target.tagName, event.target.src)) {
+				event.preventDefault();
+				event.target.parentNode.removeChild(event.target);
+			} else if (event.target.tagName.toUpperCase() === "IFRAME")
+				huzbl.addEvents(event.target.contentDocument); /* this does not work, possibly because the document hasn't started loading yet */
+		}, true);
 		doc.addEventListener("DOMContentLoaded", function(event) {
 			if (!huzbl.blockTest("script", doc.location)) {
 				var scripts = doc.getElementsByTagName('script');

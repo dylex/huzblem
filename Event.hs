@@ -9,6 +9,8 @@ import Control.Concurrent.MVar
 import Control.Monad
 import Data.List
 import qualified Data.Map as Map
+import Data.Maybe (isNothing)
+import qualified Data.Time
 import Numeric
 
 import Safe
@@ -82,14 +84,17 @@ addCookie args = maybe badArgs ac $ argCookie args where
         log "rejecting"
         runArgs "delete_cookie" args
 
-loadStart :: [String] -> UzblM ()
-loadStart [u] = do
+loadStart :: Bool -> [String] -> UzblM ()
+loadStart real [u] = do
   setVar' "uri" (ValStr u) -- fake it here, since we don't get the event otherwise
   setVar' "TITLE" ValNone
   setVar' "SELECTED_URI" ValNone
   setVar "status_load" $ ValStr "wait"
   status ""
-loadStart _ = badArgs
+  when real $ do
+    t <- io Data.Time.getCurrentTime
+    modify $ \s -> s{ uzblLastLoad = Just (isNothing (uzblLastLoad s), t) }
+loadStart _ _ = badArgs
 
 blockScript :: UzblM String
 blockScript = do
@@ -104,7 +109,7 @@ loadCommit :: [String] -> UzblM ()
 loadCommit [u] = do
   bs <- blockScript
   runScriptInit $ scriptSetDomain (uriDomain u) ++ bs
-  loadStart [u] -- sometimes we don't get this event?
+  loadStart False [u] -- sometimes we don't get this event?
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs
 
@@ -168,7 +173,7 @@ events = Map.fromAscList $
   , ("LOAD_COMMIT",	loadCommit)
   , ("LOAD_FINISH",	loadFinish)
   , ("LOAD_PROGRESS",	loadProgress)
-  , ("LOAD_START",	loadStart)
+  , ("LOAD_START",	loadStart True)
   , ("NEW_WINDOW",	newWindow)
   , ("SOCKET_SET",	socketSet) 
   , ("TITLE_CHANGED",	titleChanged) 

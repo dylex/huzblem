@@ -37,6 +37,7 @@ import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Sequence as Seq
+import qualified Data.Time
 import System.IO
 import System.Posix.Types (ProcessID)
 
@@ -49,6 +50,7 @@ import Cookies
 import Scripts
 import URIs
 import Block
+import Keys (ModKey)
 
 data Event 
   = Event String
@@ -79,6 +81,10 @@ data Bindings
     , promptCompleter :: Completer
     , promptExec :: Maybe String -> UzblM ()
     }
+  | Capture
+    { captureFun :: ModKey -> UzblM ()
+    , bindingsReturn :: Bindings 
+    }
 
 data UzblGlobal = UzblGlobal
   { uzblemSocket :: !FilePath
@@ -106,6 +112,7 @@ data UzblState = UzblState
   , uzblCookies :: Cookies
   , uzblBindings :: Bindings
   , uzblPromptHistory :: Seq.Seq String
+  , uzblLastLoad :: Maybe (Bool, Data.Time.UTCTime)
   }
 
 type UzblT m = ReaderT UzblClient (StateT UzblState m)
@@ -125,6 +132,7 @@ emptyState = UzblState
     { commandCount = Nothing
     }
   , uzblPromptHistory = Seq.empty
+  , uzblLastLoad = Nothing
   }
 
 clientKey :: UzblClient -> ClientKey

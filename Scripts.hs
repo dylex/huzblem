@@ -10,13 +10,14 @@ module Scripts
   , scriptSetBlocks
   , scriptSetBlock
   , scriptKeydown
+  , scriptImprobableIslandKey
   ) where
 
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
 import Data.Char
-import Data.List
 import Data.Maybe
+import qualified Data.Time
 import System.FilePath
 import qualified System.IO.Unsafe as Unsafe
 
@@ -116,3 +117,19 @@ scriptKeydown (m,k) =
   \event.initKeyboardEvent('keydown',false,false,null," ++ string k ++ ",0" ++ concatMap b ["Ctrl","Alt","Shift","Mod1"] ++ ",false);\
   \document.dispatchEvent(event);"
   where b = (',':) . bool . (`modifierTest` m) 
+
+scriptImprobableIslandKey :: Bool -> Data.Time.NominalDiffTime -> Char -> String
+scriptImprobableIslandKey p t k = 
+  "var iitre=/^(?:Repeater: )?(?:([0-9.]+) Seconds? (early|late) \\\\/ |Perfect!(?: \\\\/ [0-9]+-chain!(?: \\\\/ New Personal Chain Record!)?)? \\\\/ )?Next target: ([2-9]) seconds$/;\
+  \var iitm=Array.prototype.filter.call(document.getElementsByTagName('td'),function(e){return iitre.test(e.innerText)});\
+  \if(iitm.length!==1)window.alert('No timing ('+iitm.length+')');\
+  \else{\
+    \var iitr=iitre.exec(iitm[0].innerText);\
+    \var iit=parseInt(iitr[3]);\
+    \var iito=0;" ++
+    (if p then "if(iitr[2]==='late')\
+      \iito=parseFloat(iitr[1]);" else "") ++
+    "window.setTimeout(function(){\
+      \keyevent({charCode:" ++ show (ord k) ++ ",altKey:0,ctrlKey:0,metaKey:0,originalTarget:document});\
+    \}, 1000*(iit-(" ++ init (show t) ++ "+iit-iito)%iit));\
+  \}"
