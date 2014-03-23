@@ -267,6 +267,7 @@ commandBinds = Map.fromAscList $
   , ((modMod1, "f"),	toggleBlock "iframe")
   , ((modMod1, "h"),	favorites . fromMaybe 50 =<< countMaybe)
   , ((modMod1, "i"),	toggleBlock "img")
+  , ((modMod1, "l"),    toggleOrCount "enable_local_stoage" onOff)
   , ((modMod1, "m"),    promptMark False)
   , ((modMod1, "p"),    toggleOrCount "enable_private" onOff)
   , ((modMod1, "s"),	toggleBlock "script")
