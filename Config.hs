@@ -148,6 +148,7 @@ runUzbl sock cookies config uri = do
   (Just h, _, _, pid) <- createProcess (proc "uzbl-core" args){ std_in = CreatePipe }
   mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ ' ' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
   mapM_ (\a -> hPutStrLn h $ unwords $ "cookie add" : map quote a) $ cookiesArgs cookies
+  hPutStrLn h "cookie store cookies2.txt"
   hPutStrLn h ("css add " ++ quote (showValue (head stylesheets)) ++ " all")
   hClose h
   void $ forkIO $ void $ waitForProcess pid
