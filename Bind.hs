@@ -50,7 +50,7 @@ rawMode = do
     setVar "status_background" $ ValStr "#000"
 
 search :: Bool -> String -> UzblM ()
-search rev s = run $ "search" ++ (guard rev >> "_reverse") ++ ' ' : escape s
+search rev s = run $ "search " ++ (if rev then "rfind" else "find") ++ ' ' : escape s
 
 cookieSave :: UzblM ()
 cookieSave = do
@@ -66,11 +66,11 @@ prompt p i = promptComplete p i (const $ return Nothing)
 commandCompleter :: Completer
 commandCompleter = f . breakStrip isSpace where
   f (c,"") = return $ completerSet commands c
-  f ("set",vv) | (v,"") <- breakStrip (\x -> '=' == x || isSpace x) vv = do
+  f ("set",vv) | (v,"") <- breakStrip isSpace vv = do
     vl <- gets uzblVariables
     return $ maybe
-      ((\x -> "set " ++ x ++ "=") =.< completerSet (Map.keysSet vl) v)
-      (\x -> Just $ "set " ++ v ++ "=" ++ showValue x) $ Map.lookup v vl
+      ((\x -> "set " ++ x ++ " ") =.< completerSet (Map.keysSet vl) v)
+      (\x -> Just $ "set " ++ v ++ " " ++ showValue x) $ Map.lookup v vl
   f _ = return Nothing
 
 button2 :: UzblM ()
@@ -116,13 +116,14 @@ scaleCount s = show . (s*) =.< count
 scrlCount :: Bool -> UzblM String
 scrlCount pos = scaleCount $ (if pos then id else negate) 20
 
-toggleOrCount :: Variable -> [Value] -> UzblM ()
+toggleOrCount :: Variable -> [Value] -> UzblM Value
 toggleOrCount v l = onCount t c where 
   t = toggleVar v l
   c i 
-    | (ValInt _:_) <- l = setVarMsg v (ValInt i)
-    | i <= length l = setVarMsg v (l !! pred i)
+    | (ValInt _:_) <- l = set (ValInt i)
+    | i <= length l = set (l !! pred i)
     | otherwise = t
+  set x = setVarMsg v x >. x
 
 linkSelect :: String -> Maybe String -> UzblM ()
 linkSelect n t = runScript $ scriptLinkSelect n t
@@ -133,7 +134,7 @@ promptURI = promptComplete "uri " "" (withDatabase . browseFind)
 promptOpen :: UzblM ()
 promptOpen = promptURI goto
 
-toggleBlock :: String -> UzblM ()
+toggleBlock :: String -> UzblM Value
 toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [minBound..maxBound::BlockMode]
 
 promptBlock :: Maybe Bool -> UzblM ()
@@ -151,11 +152,11 @@ promptMark f = do
     withDatabase . (`markAdd` f)
 
 listBrowse :: String -> [(String, Maybe String, Maybe LocalTime)] -> UzblM ()
-listBrowse h b = setVar "inject_html" $ ValStr $
+listBrowse h b = runArgs "load" ["html",
     "<html><head><title>" ++ h ++ "</title></head><body><table>\
     \<col width='175px'/><col/><tbody>"
     ++ concatMap br b
-    ++ "</tbody></table></html>"
+    ++ "</tbody></table></html>", h]
   where 
   br (u, t, l) = "<tr>\
       \<td>" ++ maybe "" show l ++ "</td>\
@@ -167,6 +168,12 @@ favorites n = listBrowse "Favorite history" . take n =<< withDatabase browseFavo
 
 marks :: UzblM ()
 marks = listBrowse "Marks" =<< withDatabase markList
+
+toggleStylesheet :: UzblM ()
+toggleStylesheet = do
+  css <- toggleOrCount "stylesheet_uri" stylesheets
+  run "css clear"
+  runArgs "css" ["add", showValue css, "all"]
 
 improbableIslandKey :: ModKey -> UzblM ()
 improbableIslandKey mk = do
@@ -192,25 +199,43 @@ captureImprobableIslandKey = do
 
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
-  [ ((0, "-"),		onCount
+  [ ((0, "#"),          void $ toggleOrCount "link_number" onOff)
+  , ((0, "$"),          scroll "horizontal" "end")
+  , ((0, "%"),          void $ toggleOrCount "enable_scripts" onOff)
+  , ((0, "&"),          void $ toggleStylesheet)
+  , ((0, "*"),          void $ toggleOrCount "enable_webgl" onOff)
+  , ((0, "+"),          run "zoom in")
+  , ((0, "-"),		onCount
                           (newUzbl . Just =<< uzblURI)
                           (request "WINDOW" . scriptLinkGet . Just))
-  , ((0, "/"),          prompt "/" "" $ search False)
   , ((0, "0"),	        zero)
   ] ++ 
   [ ((0, show i),       digit i) | i <- [1..9]
   ] ++
-  [ ((0, "="),		setVar "zoom_level" (ValFloat 1))
+  [ ((0, ":"),          promptComplete ":" "" commandCompleter $ \c -> run c)
+  , ((0, "?"),          prompt "?" "" $ search True)
+  , ((0, "@"),	        void $ toggleOrCount "caret_browsing" onOff)
+  , ((0, "/"),          prompt "/" "" $ search False)
+  , ((0, "="),		setVar "zoom_level" (ValFloat 1))
+  , ((0, "A"),	        uzblURI >>= \u -> prompt "uri " u (newUzbl . Just))
   , ((0, "Button2"),	button2)
   , ((0, "Button8"),	run "back")
   , ((0, "Button9"),	pasteURI)
   , ((0, "Down"),	scroll "vertical" =<< scrlCount True)
   , ((0, "End"),	scroll "vertical" "end")
   , ((0, "Escape"),	commandMode)
+  , ((0, "G"),	        scroll "vertical" "end")
   , ((0, "Home"),	scroll "vertical" "begin")
+  , ((0, "ISO_Left_Tab"), runScript $ scriptKeydown (modShift,"U+0009"))
+  , ((0, "J"),          prompt "js " "" $ run . ("js " ++))
+  , ((0, "L"),	        run "search prev")
   , ((0, "Left"),       scroll "horizontal" =<< scrlCount False)
+  , ((0, "M"),          goto "~/.mozilla/bookmarks.html")
+  , ((0, "O"),	        uzblURI >>= \u -> prompt "uri " u goto)
   , ((0, "Page_Down"),	scroll "vertical" . (++"%") =<< scaleCount 100)
   , ((0, "Page_Up"),	scroll "vertical" . (++"%") =<< scaleCount (-100))
+  , ((0, "Q"),	        run "exit")
+  , ((0, "R"),	        run "reload full")
   , ((0, "Return"),	runScript . scriptActivate =<< countMaybe)
   , ((0, "Right"),	scroll "horizontal" =<< scrlCount True)
   , ((0, "Tab"),	runScript $ scriptKeydown (0,"U+0009"))
@@ -218,6 +243,8 @@ commandBinds = Map.fromAscList $
   , ((0, "["),		linkSelect "prev" $ Just "\\bprev|^<")
   , ((0, "\\"),		toggleOrCount "view_source" onOff >> run "reload")
   , ((0, "]"),		linkSelect "next" $ Just "\\bnext|>$")
+  , ((0, "^"),	        scroll "horizontal" "begin")
+  , ((0, "_"),	        run "zoom out")
   , ((0, "`"),	        captureImprobableIslandKey)
   , ((0, "a"),		promptURI (newUzbl . Just))
   , ((0, "e"),		runArgs "back" . return . show =<< count)
@@ -226,7 +253,7 @@ commandBinds = Map.fromAscList $
                           (runScript . scriptFocus))
   , ((0, "h"),		scroll "horizontal" =<< scrlCount False)
   , ((0, "i"),		rawMode)
-  , ((0, "l"),		run "search")
+  , ((0, "l"),		run "search next")
   , ((0, "m"),          marks)
   , ((0, "n"),		scroll "vertical" =<< scrlCount False)
   , ((0, "o"),		promptOpen)
@@ -236,46 +263,26 @@ commandBinds = Map.fromAscList $
   , ((0, "space"),	scroll "vertical" . (++"%") =<< scaleCount 100)
   , ((0, "t"),		scroll "vertical" =<< scrlCount True)
   , ((0, "u"),		runArgs "forward" . return . show =<< count)
-  , ((0, "v"),		toggleOrCount "show_status" onOff)
+  , ((0, "v"),		void $ toggleOrCount "show_status" onOff)
   , ((0, "y"),		onCount copyURI (request "COPY" . scriptLinkGet . Just))
   , ((0, "z"),		run "stop")
-  , ((modShift, "#"),   toggleOrCount "link_number" onOff)
-  , ((modShift, "$"),   scroll "horizontal" "end")
-  , ((modShift, "%"),   toggleOrCount "enable_scripts" onOff)
-  , ((modShift, "&"),   toggleOrCount "stylesheet_uri" stylesheets)
-  , ((modShift, "*"),   toggleOrCount "enable_webgl" onOff)
-  , ((modShift, "+"),   run "zoom_in")
-  , ((modShift, ":"),   promptComplete ":" "" commandCompleter $ \c -> run c)
-  , ((modShift, "?"),   prompt "?" "" $ search True)
-  , ((modShift, "@"),	toggleOrCount "caret_browsing" onOff)
-  , ((modShift, "A"),	uzblURI >>= \u -> prompt "uri " u (newUzbl . Just))
-  , ((modShift, "G"),	scroll "vertical" "end")
-  , ((modShift, "ISO_Left_Tab"),  runScript $ scriptKeydown (modShift,"U+0009"))
-  , ((modShift, "J"),   prompt "js " "" $ run . ("js " ++))
-  , ((modShift, "L"),	run "search_reverse")
-  , ((modShift, "M"),   goto "~/.mozilla/bookmarks.html")
-  , ((modShift, "O"),	uzblURI >>= \u -> prompt "uri " u goto)
-  , ((modShift, "Q"),	run "exit")
-  , ((modShift, "R"),	run "reload_ign_cache")
-  , ((modShift, "^"),	scroll "horizontal" "begin")
-  , ((modShift, "_"),	run "zoom_out")
-  , ((modShift, "{"),	toggleOrCount "enable_spellcheck" onOff)
+  , ((0, "{"),	        void $ toggleOrCount "enable_spellcheck" onOff)
   , ((modCtrl, "m"),    promptMark True)
-  , ((modMod1, "a"),	toggleOrCount "useragent" useragents) -- broken due to expansions...
+  , ((modMod1, "C"),    void $ toggleOrCount "cookie_policy" $ map ValInt [1,2,0])
+  , ((modMod1, "a"),	void $ toggleOrCount "useragent" useragents) -- broken due to expansions...
   , ((modMod1, "b"),	promptBlock (Just False))
-  , ((modMod1, "c"),	toggleBlock "cookie")
-  , ((modMod1, "f"),	toggleBlock "iframe")
+  , ((modMod1, "c"),	void $ toggleBlock "cookie")
+  , ((modMod1, "f"),	void $ toggleBlock "iframe")
   , ((modMod1, "h"),	favorites . fromMaybe 50 =<< countMaybe)
-  , ((modMod1, "i"),	toggleBlock "img")
-  , ((modMod1, "l"),    toggleOrCount "enable_local_stoage" onOff)
+  , ((modMod1, "i"),	void $ toggleBlock "img")
+  , ((modMod1, "l"),    void $ toggleOrCount "enable_local_stoage" onOff)
   , ((modMod1, "m"),    promptMark False)
-  , ((modMod1, "p"),    toggleOrCount "enable_private" onOff)
-  , ((modMod1, "s"),	toggleBlock "script")
+  , ((modMod1, "p"),    void $ toggleOrCount "enable_private" onOff)
+  , ((modMod1, "s"),	void $ toggleBlock "script")
   , ((modMod1, "t"),	promptBlock (Just True))
   , ((modMod1, "u"),	promptBlock Nothing)
-  , ((modMod1, "v"),	toggleOrCount "block_verbose" onOff)
-  , ((modMod1, "x"),    setVar "inject_html" $ ValStr $ "@(" ++ uzblHome "elinks-bookmarks" ++ ")@")
-  , ((modShift .|. modMod1, "C"), toggleOrCount "cookie_policy" $ map ValInt [1,2,0])
+  , ((modMod1, "v"),	void $ toggleOrCount "block_verbose" onOff)
+  , ((modMod1, "x"),    runArgs "load" ["html", "@(" ++ uzblHome "elinks-bookmarks" ++ ")@", "elinks-bookmarks"])
   , ((modCtrl .|. modMod1, "c"), cookieSave)
   ]
 
@@ -286,7 +293,7 @@ commandMode :: UzblM ()
 commandMode = do
   status ""
   setVar "command_count" $ ValStr ""
-  run "search_clear"
+  run "search clear"
   modifyBindings $ const Command{ commandCount = Nothing }
 
 runBind :: Bindings -> ModKey -> UzblM ()

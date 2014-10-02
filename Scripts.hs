@@ -1,6 +1,5 @@
 module Scripts
-  ( scriptInit
-  , scriptRequest
+  ( scriptRequest
   , scriptSetDomain
   , scriptLinkSelect
   , scriptActivate
@@ -14,15 +13,11 @@ module Scripts
   ) where
 
 import Control.Monad
-import qualified Data.ByteString.Char8 as BS
 import Data.Char
 import Data.Maybe
 import qualified Data.Time
-import System.FilePath
-import qualified System.IO.Unsafe as Unsafe
 
 import Block
-import Config
 import Util
 import Keys
 import qualified DomainMap as DM
@@ -67,14 +62,8 @@ domainRegexp t
   alt x None = One x
   alt x r = Group $ x ++ '|' : unCount r
 
-load :: FilePath -> BS.ByteString
-load = Unsafe.unsafeDupablePerformIO . BS.readFile . uzblHome . (<.>"jss")
-
 scriptRequest :: String -> String -> String -> String
 scriptRequest i t a = string ("REQUEST [" ++ i ++ "] " ++ escape t ++ " ") ++ "+(" ++ a ++ ")"
-
-scriptInit :: BS.ByteString
-scriptInit = load "init"
 
 scriptSetDomain :: Maybe String -> String
 scriptSetDomain (Just dom) = "huzbl.domainre=" ++ hostRegexp (regexpQuote dom) ++ ";"

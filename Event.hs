@@ -35,7 +35,7 @@ commandError [_] = log ""
 commandError _ = badArgs
 
 commandExecuted :: [String] -> UzblM ()
-commandExecuted ("add_cookie":args) = maybe badArgs ac $ argCookie args where
+commandExecuted ("cookie":"add":args) = maybe badArgs ac $ argCookie args where
   ac c = modify $ \u -> u{ uzblCookies = cookieAdd c (uzblCookies u) }
 commandExecuted _ = nop
 
@@ -82,19 +82,19 @@ addCookie args = maybe badArgs ac $ argCookie args where
         modify $ \u -> u{ uzblCookies = cookieAdd c (uzblCookies u) }
       else do
         log "rejecting"
-        runArgs "delete_cookie" args
+        runArgs "cookie" ("delete":args)
 
-loadStart :: Bool -> [String] -> UzblM ()
-loadStart real [u] = do
+navigationStarting :: [String] -> UzblM ()
+navigationStarting [u,"","",_] = do
   setVar' "uri" (ValStr u) -- fake it here, since we don't get the event otherwise
   setVar' "TITLE" ValNone
   setVar' "SELECTED_URI" ValNone
   setVar "status_load" $ ValStr "wait"
   status ""
-  when real $ do
-    t <- io Data.Time.getCurrentTime
-    modify $ \s -> s{ uzblLastLoad = Just (isNothing (uzblLastLoad s), t) }
-loadStart _ _ = badArgs
+  t <- io Data.Time.getCurrentTime
+  modify $ \s -> s{ uzblLastLoad = Just (isNothing (uzblLastLoad s), t) }
+navigationStarting [_,_,_,_] = nop
+navigationStarting _ = badArgs
 
 blockScript :: UzblM String
 blockScript = do
@@ -109,7 +109,6 @@ loadCommit :: [String] -> UzblM ()
 loadCommit [u] = do
   bs <- blockScript
   runScriptInit $ scriptSetDomain (uriDomain u) ++ bs
-  loadStart False [u] -- sometimes we don't get this event?
   setVar "status_load" $ ValStr "recv"
 loadCommit _ = badArgs
 
@@ -148,7 +147,7 @@ titleChanged [t] = do
 titleChanged _ = badArgs
 
 linkHover :: [String] -> UzblM ()
-linkHover [u] = setVar' "SELECTED_URI" $ ValStr u
+linkHover [u,_] = setVar' "SELECTED_URI" $ ValStr u
 linkHover _ = badArgs
 
 linkUnHover :: [String] -> UzblM ()
@@ -173,7 +172,7 @@ events = Map.fromAscList $
   , ("LOAD_COMMIT",	loadCommit)
   , ("LOAD_FINISH",	loadFinish)
   , ("LOAD_PROGRESS",	loadProgress)
-  , ("LOAD_START",	loadStart True)
+  , ("NAVIGATION_STARTING", navigationStarting)
   , ("NEW_WINDOW",	newWindow)
   , ("SOCKET_SET",	socketSet) 
   , ("TITLE_CHANGED",	titleChanged) 

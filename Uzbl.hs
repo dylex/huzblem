@@ -28,7 +28,6 @@ module Uzbl
 
 import Prelude hiding (log)
 
-import qualified Data.ByteString.Char8 as BS
 import Control.Concurrent
 import Control.Monad.Reader
 import Control.Monad.State
@@ -93,7 +92,7 @@ data UzblGlobal = UzblGlobal
   , uzblDatabase :: Database
   , uzblDebug :: Bool
   , uzblBlocks :: MVar Blocks
-  , uzblScriptInit :: IORef BS.ByteString
+  , uzblScriptInit :: IORef String
   }
 
 data UzblClient = UzblClient
@@ -186,13 +185,13 @@ setVar' :: Variable -> Value -> UzblM ()
 setVar' var val = modify $ \u -> u{ uzblVariables = Map.insert var val (uzblVariables u) }
 
 setVar :: Variable -> Value -> UzblM ()
-setVar var val = run $ "set " ++ var ++ '=' : showValue val
+setVar var val = run $ "set " ++ var ++ ' ' : showValue val
 
 setVarMsg :: Variable -> Value -> UzblM ()
 setVarMsg var val = do
   status c
   run $ "set " ++ c
-  where c = var ++ '=' : showValue val
+  where c = var ++ ' ' : showValue val
 
 resetVar :: Variable -> UzblM ()
 resetVar var = maybe nop (setVar var) $ Map.lookup var defaultConfig
@@ -200,17 +199,18 @@ resetVar var = maybe nop (setVar var) $ Map.lookup var defaultConfig
 onOff :: [Value]
 onOff = [ValInt 1, ValInt 0]
 
-toggleVar :: Variable -> [Value] -> UzblM ()
+toggleVar :: Variable -> [Value] -> UzblM Value
 toggleVar var vals = do
   x <- getVar var
   let y = (!!) vals $ succ $ fromMaybe (-1) $ elemIndex x $ init vals
   setVarMsg var y
+  return y
 
 uzblURI :: UzblM String
 uzblURI = getVarStr "uri"
 
 goto :: String -> UzblM ()
-goto u = run $ "set uri=" ++ escape (expandURI u)
+goto u = run $ "uri " ++ escape (expandURI u)
 
 status :: String -> UzblM ()
 status "" = setVar "status_message" $ ValStr ""
@@ -233,12 +233,11 @@ newUzbl uri = do
     (fmap expandURI uri)
 
 runScript :: String -> UzblM ()
-runScript s = run $ "js " ++ s ++ "undefined"
+runScript s = runArgs "js" ["page","string", s ++ ";undefined"]
 
 setScriptInit :: UzblGlobal -> IO ()
-setScriptInit g = do
-  bs <- BS.pack . scriptSetBlocks =.< readMVar (uzblBlocks g)
-  writeIORef (uzblScriptInit g) $ BS.append scriptInit bs
+setScriptInit g =
+  writeIORef (uzblScriptInit g) . scriptSetBlocks =<< readMVar (uzblBlocks g)
 
 updateScriptInit :: UzblM ()
 updateScriptInit = io . setScriptInit =<< asks uzblGlobal
@@ -247,8 +246,8 @@ runScriptInit :: String -> UzblM ()
 runScriptInit r = do
   si <- io . readIORef . uzblScriptInit =<< asks uzblGlobal
   debug $ "init " ++ r
-  h <- asks uzblHandle
-  io $ hPutStr h "js " >> BS.hPut h si >> hPutStrLn h (r ++ "undefined")
+  runArgs "js" ["page","file","init.min.js"]
+  runScript (si ++ r)
 
 request :: String -> String -> UzblM ()
 request t s = do
