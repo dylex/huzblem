@@ -125,7 +125,7 @@ defaultConfig = Map.fromAscList
   , ("enable_plugins",		ValInt 0)
   , ("enable_scripts",		ValInt 1)
   , ("download_dir",            ValStr $ home </> "tmp/uzbl")
-  , ("download_handler",        ValStr $ "sync_spawn " ++ uzblHome "download" ++ " \\@download_dir")
+  , ("download_handler",        ValStr $ "spawn_sync " ++ uzblHome "download" ++ " \\@download_dir")
   , ("enable_local_storage",	ValInt 0)
   , ("enable_offline_app_cache",ValInt 0)
   , ("enable_page_cache",	ValInt 1)
@@ -142,9 +142,9 @@ defaultConfig = Map.fromAscList
   , ("zoom_text_only",		ValInt 1)
   ] `Map.union` baseConfig
 
-runUzbl :: FilePath -> Cookies -> Config -> Maybe String -> IO ()
-runUzbl sock cookies config uri = do
-  let args = ["--connect-socket", sock, "--config", "-"] ++ maybe [] (("-u":) . return) uri
+runUzbl :: FilePath -> Cookies -> Config -> Bool -> Maybe String -> IO ()
+runUzbl sock cookies config debug uri = do
+  let args = ["--connect-socket", sock, "--config", "-"] ++ (guard debug >. "-v") ++ maybe [] (("-u":) . return) uri
   (Just h, _, _, pid) <- createProcess (proc "uzbl-core" args){ std_in = CreatePipe }
   mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ ' ' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
   mapM_ (\a -> hPutStrLn h $ unwords $ "cookie add" : map quote a) $ cookiesArgs cookies

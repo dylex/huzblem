@@ -50,7 +50,7 @@ rawMode = do
     setVar "status_background" $ ValStr "#000"
 
 search :: Bool -> String -> UzblM ()
-search rev s = run $ "search " ++ (if rev then "rfind" else "find") ++ ' ' : escape s
+search rev s = run $ "search " ++ (if rev then "rfind " else "find ") ++ escape s
 
 cookieSave :: UzblM ()
 cookieSave = do
@@ -208,6 +208,7 @@ commandBinds = Map.fromAscList $
   , ((0, "-"),		onCount
                           (newUzbl . Just =<< uzblURI)
                           (request "WINDOW" . scriptLinkGet . Just))
+  , ((0, "/"),          prompt "/" "" $ search False)
   , ((0, "0"),	        zero)
   ] ++ 
   [ ((0, show i),       digit i) | i <- [1..9]
@@ -215,7 +216,6 @@ commandBinds = Map.fromAscList $
   [ ((0, ":"),          promptComplete ":" "" commandCompleter $ \c -> run c)
   , ((0, "?"),          prompt "?" "" $ search True)
   , ((0, "@"),	        void $ toggleOrCount "caret_browsing" onOff)
-  , ((0, "/"),          prompt "/" "" $ search False)
   , ((0, "="),		setVar "zoom_level" (ValFloat 1))
   , ((0, "A"),	        uzblURI >>= \u -> prompt "uri " u (newUzbl . Just))
   , ((0, "Button2"),	button2)
