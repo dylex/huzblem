@@ -126,6 +126,7 @@ defaultConfig = Map.fromAscList
   , ("enable_scripts",		ValInt 1)
   , ("download_dir",            ValStr $ home </> "tmp/uzbl")
   , ("download_handler",        ValStr $ "sync_spawn " ++ uzblHome "download" ++ " \\@download_dir")
+  , ("enable_local_storage",    ValInt 0)
   , ("enable_private",	        ValInt 0)
   , ("enable_spellcheck",	ValInt 0)
   , ("enable_webgl",	        ValInt 0)
