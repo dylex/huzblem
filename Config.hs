@@ -139,60 +139,66 @@ defaultConfig = Map.fromAscList
   , ("status_top",		ValInt 0)
   , ("stylesheet_uri",		head stylesheets)
   , ("useragent",		head useragents)
-  , ("zoom_text_only",		ValInt 1)
+  , ("zoom_type",		ValInt 0)
   ] `Map.union` baseConfig
 
 runUzbl :: FilePath -> Cookies -> Config -> Maybe String -> IO ()
 runUzbl sock cookies config uri = do
   let args = ["--connect-socket", sock, "--config", "-"] ++ maybe [] (("-u":) . return) uri
   (Just h, _, _, pid) <- createProcess (proc "uzbl-core" args){ std_in = CreatePipe }
-  mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ ' ' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
-  mapM_ (\a -> hPutStrLn h $ unwords $ "cookie add" : map quote a) $ cookiesArgs cookies
-  hPutStrLn h ("css add " ++ quote (showValue (head stylesheets)) ++ " all")
+  mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ '=' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
+  mapM_ (\a -> hPutStrLn h $ unwords $ "add_cookie" : map quote a) $ cookiesArgs cookies
   hClose h
   void $ forkIO $ void $ waitForProcess pid
 
 commands :: Set.Set String
 commands = Set.fromAscList
-  [ "back"
-  , "cache"
+  [ "add_cookie"
+  , "back"
   , "chain"
-  , "cookie"
-  , "css"
-  , "dns"
+  , "clear_cookies"
+  , "dehilight"
+  , "delete_cookie"
   , "download"
   , "dump_config"
   , "dump_config_as_events"
   , "event"
   , "exit"
-  , "favicon"
   , "forward"
-  , "geometry"
   , "hardcopy"
   , "include"
-  , "inspector"
   , "js"
-  , "load"
-  , "menu"
+  , "menu_add"
+  , "menu_editable_add"
+  , "menu_editable_remove"
+  , "menu_editable_separator"
+  , "menu_image_add"
+  , "menu_image_remove"
+  , "menu_image_separator"
+  , "menu_link_add"
+  , "menu_link_remove"
+  , "menu_link_separator"
+  , "menu_remove"
+  , "menu_separator"
   , "print"
   , "reload"
-  , "remove_all_db"
+  , "reload_ign_cache"
   , "request"
-  , "save"
-  , "scheme"
+  , "script"
   , "scroll"
   , "search"
-  , "security"
+  , "search_clear"
+  , "search_reverse"
   , "set"
-  , "snapshot"
+  , "sh"
+  , "show_inspector"
   , "spawn"
-  , "spawn_sh"
-  , "spawn_sh_sync"
-  , "spawn_sync"
-  , "spawn_sync_exec"
-  , "spell"
   , "stop"
+  , "sync_sh"
+  , "sync_spawn"
+  , "sync_spawn_exec"
   , "toggle"
   , "uri"
-  , "zoom"
+  , "zoom_in"
+  , "zoom_out"
   ]

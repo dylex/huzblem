@@ -2,8 +2,10 @@ default: huzblem init.jss all pguri.sql
 
 huzblem:
 	ghc --make -dynamic -threaded -O -Wall $@.hs -i -i. -o $@
-%.min.js: %.js
-	curl -Ss --data-urlencode "js_code@$<" -o $@ "http://marijnhaverbeke.nl/uglifyjs"
+jss: jss.hs
+	ghc --make -O -Wall $< -i. -o $@
+%.jss: %.js jss
+	./jss < $< > $@
 
 hlint:
 	hlint -c .
