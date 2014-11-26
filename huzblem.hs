@@ -123,7 +123,7 @@ main = do
 
   let uu [] = [Nothing]
       uu l = map (Just . expandURI) l
-  mapM_ (runUzbl sock cookies (optionConfig opts) (optionDebug opts)) (uu urls)
+  mapM_ (runUzbl sock cookies (optionConfig opts)) (uu urls)
 
   unless me exitSuccess
 
