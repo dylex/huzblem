@@ -85,8 +85,8 @@ stylesheets = map (ValStr . ("file://" ++) . uzblHome) ["plain.css", "style.css"
 useragents :: [Value]
 useragents = map ValStr 
   [ "Uzbl (X11; " ++ uname ++ ") WebKit/@{WEBKIT_MAJOR}.@{WEBKIT_MINOR}"
-  , "Mozilla/5.0 (X11; " ++ uname ++ ") AppleWebKit/555 (KHTML, like Gecko) Chrome/25 Safari/555"
-  , "Mozilla/5.0 (X11; " ++ uname ++ "; rv:5.5) Gecko/" ++ today ++ " Firefox/5.5"
+  , "Mozilla/5.0 (X11; " ++ uname ++ ") AppleWebKit/537 (KHTML, like Gecko) Chrome/25 Safari/537"
+  , "Mozilla/5.0 (X11; " ++ uname ++ "; rv:21.0) Gecko/" ++ today ++ " Firefox/21.0"
   ]
   where 
     uname = maybe "unknown" (head . lines) $ Unsafe.unsafeDupablePerformIO $ capture "uname" ["-sm"]
