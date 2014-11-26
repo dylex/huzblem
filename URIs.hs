@@ -41,7 +41,6 @@ rewrites = Map.fromAscList
   [ ("amg",     ("http://www.allmusic.com/search/artist/" ?=))
   , ("dd",      ("http://duckduckgo.com/html/?kp=-1&q=" ?=))
   , ("dict",	("http://dictionary.reference.com/search?q=" ?=))
-  , ("fm",	("http://www.freshmeat.net/search/?q=" ?=))
   , ("g",	("http://www.google.com/search?q=" ?=))
   , ("gi",	("http://images.google.com/images?q=" ?=))
   , ("gm",      ("http://maps.google.com/maps?q=" ?=))
@@ -54,6 +53,7 @@ rewrites = Map.fromAscList
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
   , ("om",	("http://openstreetmap.org/?query=" ?=))
+  , ("op",      ("https://databrary.org/project/search?scope=all&q=" ?=))
   , ("rfc",	("http://tools.ietf.org/html/rfc" ?=)) -- "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt"
   , ("thes",	("http://thesaurus.reference.com/search?q=" ?=))
   , ("trackdhl", ("http://track.dhl-usa.com/TrackByNbr.asp?ShipmentNumber=" ?=))
@@ -63,6 +63,19 @@ rewrites = Map.fromAscList
   , ("urban",	("http://www.urbandictionary.com/define.php?term=" ?=))
   , ("weather",	("http://classic.wunderground.com/cgi-bin/findweather/getForecast?query=" ?=))
   , ("wiki",	("http://www.wikipedia.org/w/wiki.phtml?search=" ?=))
+  ]
+
+aliases :: Map.Map String String
+aliases = Map.fromAscList 
+  [ ("amg",     "http://www.allmusic.com/")
+  , ("gm",      "http://maps.google.com/")
+  , ("hdb",	"http://hackage.haskell.org/packages")
+  , ("imdb",	"http://imdb.com/")
+  , ("math",	"http://mathworld.wolfram.com/")
+  , ("netflix", "http://dvd.netflix.com/Queue")
+  , ("om",	"http://openstreetmap.org/")
+  , ("op",      "https://databrary.org/project/projects/databrary/work_packages")
+  , ("radar",	"http://classic.wunderground.com/radar/radblast.asp?num=10&delay=50&noclutter=0&ID=JFK&type=TR0&showstorms=0&lightning=0&showlabels=0&rainsnow=1")
   ]
 
 defaultRewrite :: String -> String
@@ -78,5 +91,5 @@ expandURI s = case find (`elem` ":. ") s of
   Just '.' -> "http://" ++ s
   _ -> case break (' '==) s of
     (k,' ':t) | Just r <- Map.lookup k rewrites -> r t
+    (k,"") | Just r <- Map.lookup k aliases -> r
     _ -> defaultRewrite s
-
