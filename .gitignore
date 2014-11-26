@@ -1,10 +1,10 @@
 *.hi
 *.o
 *.so
-*.min.js
+*.jss
 jss
 huzblem
 pguri.sql
 block
-cookies*.txt
+cookies.txt
 log
