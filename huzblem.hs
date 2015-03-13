@@ -19,6 +19,7 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Error
+import System.Posix.Env as Env
 
 import Util
 import Config
@@ -94,8 +95,8 @@ main = do
       mapM_ putStr err
       putStr $ GetOpt.usageInfo "huzblem [OPTIONS] [URI ...]" options
       exitFailure
-  path <- lookupEnv "PATH"
-  setEnv "PATH" (uzblHome "" ++ maybe "" (':':) path)
+  path <- Env.getEnv "PATH"
+  setEnv "PATH" (uzblHome "" ++ maybe "" (':':) path) True
   hSetEncoding stdout char8
 
   s <- socket AF_UNIX Stream defaultProtocol

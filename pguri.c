@@ -8,7 +8,7 @@
 #include <utils/builtins.h>
 #include <utils/array.h>
 #include <utils/typcache.h>
-#include <server/access/htup_details.h>
+#include <access/htup_details.h>
 
 PG_MODULE_MAGIC;
 
