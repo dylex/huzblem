@@ -34,7 +34,7 @@ type Variable = String
 data Value 
   = ValNone
   | ValInt Int
-  | ValFloat Float
+  | ValFloat Double
   | ValStr String
 
 type Config = Map.Map Variable Value
