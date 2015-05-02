@@ -18,8 +18,6 @@ module Util
 
 import Control.Monad
 import Data.Char
-import Data.List
-import Data.Maybe
 import Numeric
 import System.Exit
 import System.IO

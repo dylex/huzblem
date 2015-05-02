@@ -173,7 +173,7 @@ events = Map.fromAscList $
   , ("LOAD_FINISH",	loadFinish)
   , ("LOAD_PROGRESS",	loadProgress)
   , ("NAVIGATION_STARTING", navigationStarting)
-  , ("NEW_WINDOW",	newWindow)
+  , ("REQ_NEW_WINDOW",	newWindow)
   , ("SOCKET_SET",	socketSet) 
   , ("TITLE_CHANGED",	titleChanged) 
   , ("VARIABLE_SET",	variableSet) 

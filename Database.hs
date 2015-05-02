@@ -13,7 +13,6 @@ module Database
 import Control.Concurrent.MVar
 import Control.Monad
 import Data.Array
-import Data.Maybe
 import Data.Time.LocalTime (LocalTime)
 
 import Database.HDBC
