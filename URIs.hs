@@ -39,20 +39,20 @@ infixr 5 ?=
 rewrites :: Map.Map String (String -> String)
 rewrites = Map.fromAscList
   [ ("amg",     ("http://www.allmusic.com/search/artist/" ?=))
-  , ("dd",      ("http://duckduckgo.com/html/?kp=-1&q=" ?=))
+  , ("dd",      ("https://duckduckgo.com/html/?kp=-1&q=" ?=))
   , ("dict",	("http://dictionary.reference.com/search?q=" ?=))
-  , ("g",	("http://www.google.com/search?q=" ?=))
-  , ("gi",	("http://images.google.com/images?q=" ?=))
+  , ("g",	("https://www.google.com/search?q=" ?=))
+  , ("gi",	("https://images.google.com/images?q=" ?=))
   , ("gm",      ("http://maps.google.com/maps?q=" ?=))
   , ("gn",	("http://news.google.com/news?q=" ?=))
   , ("gs",	("http://scholar.google.com/scholar?q=" ?=))
   , ("hdb",	("http://hackage.haskell.org/package/" ?=))
   , ("hoogle",	("http://haskell.org/hoogle/?q=" ?=))
-  , ("imdb",	("http://imdb.com/find?q=" ?=))
+  , ("imdb",	("https://imdb.com/find?q=" ?=))
   , ("math",	("http://mathworld.wolfram.com/search/?query=" ?=))
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
-  , ("om",	("http://openstreetmap.org/?query=" ?=))
+  , ("om",	("https://openstreetmap.org/?query=" ?=))
   , ("op",      ("https://databrary.org/project/search?scope=all&q=" ?=))
   , ("rfc",	("http://tools.ietf.org/html/rfc" ?=)) -- "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt"
   , ("thes",	("http://thesaurus.reference.com/search?q=" ?=))
@@ -60,9 +60,9 @@ rewrites = Map.fromAscList
   , ("trackfedex", ("http://www.fedex.com/cgi-bin/tracking?action=track&language=english&last_action=alttrack&ascend_header=1&cntry_code=us&initial=x&mps=y&tracknumbers=" ?=))
   , ("trackups", ("http://wwwapps.ups.com/etracking/tracking.cgi?TypeOfInquiryNumber=T&track.x=0&track.y=0&InquiryNumber1=" ?=))
   , ("trackusps", ("http://trkcnfrm1.smi.usps.com/PTSInternetWeb/InterLabelInquiry.do?origTrackNum=" ?=))
-  , ("urban",	("http://www.urbandictionary.com/define.php?term=" ?=))
+  , ("urban",	("https://www.urbandictionary.com/define.php?term=" ?=))
   , ("weather",	("http://classic.wunderground.com/cgi-bin/findweather/getForecast?query=" ?=))
-  , ("wiki",	("http://www.wikipedia.org/w/wiki.phtml?search=" ?=))
+  , ("wiki",	("https://www.wikipedia.org/w/wiki.phtml?search=" ?=))
   ]
 
 aliases :: Map.Map String String
