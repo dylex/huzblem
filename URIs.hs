@@ -48,7 +48,7 @@ rewrites = Map.fromAscList
   , ("gs",	("http://scholar.google.com/scholar?q=" ?=))
   , ("hdb",	("http://hackage.haskell.org/package/" ?=))
   , ("hoogle",	("http://haskell.org/hoogle/?q=" ?=))
-  , ("imdb",	("https://imdb.com/find?q=" ?=))
+  , ("imdb",	("http://imdb.com/find?q=" ?=))
   , ("math",	("http://mathworld.wolfram.com/search/?query=" ?=))
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
