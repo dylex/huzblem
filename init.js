@@ -28,9 +28,9 @@ var huzbl = {
 		}
         },
 	blockTest : function(type, src) {
-		var block = huzbl.block[type.toUpperCase()];
+		var block = huzbl.block && huzbl.block[type.toUpperCase()];
 		if (!block) {
-			if (huzbl.block.verbose)
+			if (!huzbl.block || huzbl.block.verbose)
 				console.warn("allowing unknown block type: " + type);
 			return true;
 		}
