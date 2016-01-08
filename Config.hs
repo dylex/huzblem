@@ -20,7 +20,6 @@ import System.Environment
 import System.FilePath
 import System.IO
 import qualified System.IO.Unsafe as Unsafe
-import System.Locale (defaultTimeLocale)
 import System.Process
 
 import Safe
@@ -90,7 +89,7 @@ useragents = map ValStr
   ]
   where 
     uname = maybe "unknown" (head . lines) $ Unsafe.unsafeDupablePerformIO $ capture "uname" ["-sm"]
-    today = Time.formatTime defaultTimeLocale "%Y%m%d" $ Time.utctDay $ Unsafe.unsafeDupablePerformIO Time.getCurrentTime
+    today = Time.formatTime Time.defaultTimeLocale "%Y%m%d" $ Time.utctDay $ Unsafe.unsafeDupablePerformIO Time.getCurrentTime
 
 -- |These variables are reset on start.  Any setting containing an expansion must be here.
 baseConfig :: Config

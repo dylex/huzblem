@@ -43,16 +43,16 @@ queries =
     \   row_number() OVER d AS i \
     \ FROM browse WINDOW d AS (\
     \   PARTITION BY (uri).domain ORDER BY last DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING \
-    \ )) b WHERE i = 1 ORDER BY last DESC"
+    \ )) b WHERE i = 1 ORDER BY last DESC NULLS LAST"
   , "UPDATE browse SET title = ? WHERE uri = ?::uri"
   , "SELECT mark_add(?, ?)"
   , "SELECT COALESCE(browse.uri, mark.uri), browse.title, browse.last \
     \ FROM mark LEFT JOIN browse ON (mark.browse = browse.id) \
-    \ ORDER BY last DESC"
+    \ ORDER BY last DESC NULLS LAST"
   , "SELECT COALESCE(browse.uri, mark.uri) \
     \ FROM mark FULL JOIN browse ON (mark.browse = browse.id) \
     \ WHERE text(coalesce(mark.uri, browse.uri)) LIKE '%' || ? || '%' \
-    \ ORDER BY mark.id IS NULL, browse.last DESC LIMIT 1"
+    \ ORDER BY mark.id IS NULL, browse.last DESC NULLS LAST LIMIT 1"
   ]
 
 withQuery' :: QueryType -> (Statement -> IO a) -> Database -> IO a

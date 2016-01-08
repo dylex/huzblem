@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, FlexibleContexts #-}
 module Bind 
   ( commandMode
   , rawMode
