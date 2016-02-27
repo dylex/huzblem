@@ -81,7 +81,6 @@ cookieExpires :: Cookie -> String
 cookieExpires = maybe "" ((show :: Integer -> String) . round) . cookieExpire
 
 writeCookieTxt :: Cookie -> Maybe String
-writeCookieTxt Cookie{ cookieExpire = Nothing } = Nothing
 writeCookieTxt c = Just $ intercalate "\t"
   [ (guard (cookieHttpOnly c) >> "#HttpOnly_") ++ BS.unpack (cookieDomain c)
   , tf $ not (BS.null (cookieDomain c)) && BS.head (cookieDomain c) == '.'
@@ -103,8 +102,14 @@ cookieArgs c =
   , (if cookieSecure c then "https" else "http") ++ (guard (cookieHttpOnly c) >> "Only")
   , cookieExpires c]
 
+guardExpired :: POSIXTime -> Cookie -> Maybe Cookie
+guardExpired now c@Cookie{ cookieExpire = Just t } | t > now = Just c
+guardExpired _ _ = Nothing
+
 loadCookiesWith :: (String -> Maybe Cookie) -> FilePath -> IO [Cookie]
-loadCookiesWith c = mapMaybe c . lines .=< readFile
+loadCookiesWith c f = do
+  now <- getPOSIXTime
+  mapMaybe (guardExpired now <=< c) . lines =.< readFile f
 
 loadElinksCookies :: FilePath -> IO Cookies
 loadElinksCookies = Set.fromList .=< loadCookiesWith parseElinksCookie
@@ -113,7 +118,9 @@ loadCookiesTxt :: FilePath -> IO Cookies
 loadCookiesTxt = Set.fromDistinctAscList .=< loadCookiesWith parseCookieTxt
 
 saveCookiesTxt :: FilePath -> Cookies -> IO ()
-saveCookiesTxt f = writeFile f . unlines . mapMaybe writeCookieTxt . Set.toAscList
+saveCookiesTxt f c = do
+  now <- getPOSIXTime
+  writeFile f $ unlines $ mapMaybe (writeCookieTxt <=< guardExpired now) $ Set.toAscList c
 
 cookiesArgs :: Cookies -> [[String]]
 cookiesArgs = map cookieArgs . Set.toList
