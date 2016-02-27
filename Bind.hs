@@ -199,7 +199,8 @@ captureImprobableIslandKey = do
 
 commandBinds :: Map.Map ModKey (UzblM ())
 commandBinds = Map.fromAscList $
-  [ ((0, "#"),          void $ toggleOrCount "link_number" onOff)
+  [ ((0, " "),	        scroll "vertical" . (++"%") =<< scaleCount 100)
+  , ((0, "#"),          void $ toggleOrCount "link_number" onOff)
   , ((0, "$"),          scroll "horizontal" "end")
   , ((0, "%"),          void $ toggleOrCount "enable_scripts" onOff)
   , ((0, "&"),          void $ toggleStylesheet)
