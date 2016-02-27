@@ -15,7 +15,6 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Function
 import Data.List
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Set as Set
 import Data.Time.Clock.POSIX
 
