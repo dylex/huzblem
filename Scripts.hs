@@ -23,7 +23,7 @@ import Keys
 import qualified DomainMap as DM
 
 string :: String -> String
-string = escape . show -- close enough
+string = show -- close enough
 
 bool :: Bool -> String
 bool False = "false"

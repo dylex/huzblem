@@ -81,14 +81,13 @@ quotedWords s = w : quotedWords r where (w,r) = quotedWord s
 
 escape :: String -> String
 escape [] = []
-escape (c:s)
-  | c `elem` "@\\" = '\\':s'
-  | otherwise = s'
-  where s' = c:escape s
+escape ('@':s) = '\\':'@':escape s
+escape ('\\':s) = '\\':'\\':escape s
+escape (c:s) = c:escape s
 
--- also escapes (note that " get double escaping)
+-- also escapes
 quote :: String -> String
-quote = ('"' :) . escape . q where
+quote = ('"' :) . q . escape where
   q "" = "\""
   q ('"':s) = '\\':'"':q s
   q (c:s) = c:q s

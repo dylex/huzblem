@@ -234,7 +234,7 @@ newUzbl uri = do
     (fmap expandURI uri)
 
 runScript :: String -> UzblM ()
-runScript s = runArgs "js" ["page","string", s ++ ";undefined"]
+runScript s = runArgs "js" ["page","string", s ++ "undefined"]
 
 setScriptInit :: UzblGlobal -> IO ()
 setScriptInit g =
