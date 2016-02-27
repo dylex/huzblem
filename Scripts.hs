@@ -37,8 +37,8 @@ regexpQuote (c:s)
   where s' = c:regexpQuote s
 
 regexp :: String -> String -> String
-regexp i p = '/' : escape (r i) ++ '/' : p where
-  r [] = []
+regexp i p = '/' : r i where
+  r [] = '/' : p
   r ('/':s) = '\\':'/':r s
   r (c:s) = c:r s
 
