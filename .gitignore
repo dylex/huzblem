@@ -8,3 +8,4 @@ pguri.sql
 block
 cookies*.txt
 log
+/dist/

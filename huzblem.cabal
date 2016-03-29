@@ -1,0 +1,32 @@
+name:                huzblem
+version:             0.2
+synopsis:            A haskell event manager for uzbl
+license:             GPL-3
+license-file:        LICENSE
+author:              Dylan Simon
+maintainer:          dylan@dylex.net
+category:            Web
+build-type:          Simple
+extra-source-files:  README
+cabal-version:       >=1.10
+
+executable huzblem
+  main-is:             huzblem.hs
+  default-language:    Haskell2010
+  other-extensions:    PatternGuards, FlexibleContexts, TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables
+  ghc-options: -dynamic -threaded -Wall -fno-warn-tabs
+  build-depends:       
+    base ==4.8.*,
+    containers,
+    time >=1.5,
+    filepath,
+    directory,
+    process,
+    safe,
+    bytestring,
+    array,
+    HDBC,
+    HDBC-postgresql,
+    network-uri,
+    network,
+    mtl
