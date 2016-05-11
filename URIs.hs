@@ -68,6 +68,7 @@ rewrites = Map.fromAscList
 aliases :: Map.Map String String
 aliases = Map.fromAscList 
   [ ("amg",     "http://www.allmusic.com/")
+  , ("gc",      "http://google.com/calendar")
   , ("gm",      "http://maps.google.com/")
   , ("hdb",	"http://hackage.haskell.org/packages")
   , ("imdb",	"http://imdb.com/")
