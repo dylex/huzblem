@@ -135,7 +135,7 @@ promptOpen :: UzblM ()
 promptOpen = promptURI goto
 
 toggleBlock :: String -> UzblM Value
-toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [minBound..maxBound::BlockMode]
+toggleBlock t = toggleOrCount ("block_" ++ t) $ map (ValInt . fromEnum) [BlockUntrusted,AllowTrusted]
 
 promptBlock :: Maybe Bool -> UzblM ()
 promptBlock b = do
