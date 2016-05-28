@@ -1,4 +1,4 @@
-default: huzblem init.jss all pguri.sql
+default: huzblem init.min.js all pguri.sql
 
 huzblem:
 	ghc --make -dynamic -threaded -O -Wall -fno-warn-tabs $@.hs -i -i. -o $@
