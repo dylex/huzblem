@@ -42,7 +42,7 @@ rewrites = Map.fromAscList
   , ("dd",      ("https://duckduckgo.com/html/?kp=-1&q=" ?=))
   , ("dict",	("http://dictionary.reference.com/search?q=" ?=))
   , ("g",	("https://www.google.com/search?q=" ?=))
-  , ("gi",	("https://images.google.com/images?q=" ?=))
+  , ("gi",	("https://www.google.com/search?tbm=isch&q=" ?=))
   , ("gm",      ("http://maps.google.com/maps?q=" ?=))
   , ("gn",	("http://news.google.com/news?q=" ?=))
   , ("gs",	("http://scholar.google.com/scholar?q=" ?=))
