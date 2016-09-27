@@ -11,7 +11,7 @@ import Data.List
 import qualified Data.Map as Map
 import Data.Maybe (isNothing)
 import qualified Data.Time
-import Numeric
+import Numeric hiding (log)
 
 import Safe
 

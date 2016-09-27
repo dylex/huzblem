@@ -16,7 +16,7 @@ executable huzblem
   other-extensions:    PatternGuards, FlexibleContexts, TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables
   ghc-options: -dynamic -threaded -Wall -fno-warn-tabs
   build-depends:       
-    base ==4.8.*,
+    base >=4.8 && <5,
     containers,
     time >=1.5,
     filepath,
