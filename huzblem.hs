@@ -38,7 +38,7 @@ data Options = Options
   , optionDebug :: Bool
   , optionConfig :: Config
   , optionBlocks :: FilePath
-  , optionDatabase :: String
+  , optionDatabase :: Maybe String
   }
 
 defaultOptions :: Options
@@ -48,7 +48,7 @@ defaultOptions = Options
   , optionDebug = False
   , optionConfig = defaultConfig
   , optionBlocks = uzblHome "block"
-  , optionDatabase = ""
+  , optionDatabase = Just ""
   }
 
 defaultSocket :: FilePath
@@ -68,7 +68,7 @@ options =
   [ GetOpt.Option "s" ["socket"] 
       (GetOpt.ReqArg (\s o -> o{ optionSocket = Just s }) "NAME|PATH") 
       ("suffix or absolute path for event manager socket [" ++ defaultSocket ++ "]")
-  , GetOpt.Option "" ["cookies"]
+  , GetOpt.Option "c" ["cookies"]
       (GetOpt.OptArg (\s o -> o{ optionCookies = s }) "FILE") 
       ("Load and use cookies from FILE [" ++ fromMaybe "NONE" (optionCookies defaultOptions) ++ "]")
   , GetOpt.Option "v" ["verbose"]
@@ -81,8 +81,11 @@ options =
       (GetOpt.NoArg (optionConfig' $ Map.insert "enable_private" (ValInt 1)))
       ("Private mode (equivalent to -s enable_private=1)")
   , GetOpt.Option "d" ["database"]
-      (GetOpt.ReqArg (\s o -> o{ optionDatabase = s }) "CONN")
-      ("database connection info [" ++ optionDatabase defaultOptions ++ "]")
+      (GetOpt.ReqArg (\s o -> o{ optionDatabase = Just s }) "CONN")
+      ("database connection info [" ++ fromJust (optionDatabase defaultOptions) ++ "]")
+  , GetOpt.Option "n" ["no-database"]
+      (GetOpt.NoArg (\o -> o{ optionDatabase = Nothing }))
+      "do not connect to a database"
   ]
 
 main :: IO ()
@@ -105,12 +108,12 @@ main = do
 
   me <- catchdne (do
       connect s sa
-      sClose s
+      close s
       putStrLn "huzblem already running"
       return False)
     (do
       removeFile_ sock
-      bindSocket s sa
+      bind s sa
       listen s (8+length args)
       return True)
 

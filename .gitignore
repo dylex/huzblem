@@ -9,3 +9,4 @@ block
 cookies*.txt
 log
 /dist/
+/.stack-work/

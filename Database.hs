@@ -22,10 +22,12 @@ import Util
 
 type Query = MVar Statement
 
-data Database = Database
-  { databaseConnection :: Connection
-  , databaseQueries :: Array QueryType Query
-  }
+data Database
+  = Database
+    { databaseConnection :: Connection
+    , databaseQueries :: Array QueryType Query
+    }
+  | NoDatabase
 
 data QueryType
   = BrowseAdd
@@ -55,10 +57,11 @@ queries =
     \ ORDER BY mark.id IS NULL, browse.last DESC NULLS LAST LIMIT 1"
   ]
 
-withQuery' :: QueryType -> (Statement -> IO a) -> Database -> IO a
-withQuery' qt f d = withMVar (databaseQueries d ! qt) f
+withQuery' :: Monoid a => QueryType -> (Statement -> IO a) -> Database -> IO a
+withQuery' qt f Database{ databaseQueries = dq } = withMVar (dq ! qt) f
+withQuery' _ _ NoDatabase = return mempty
 
-withQuery :: QueryType -> (Statement -> IO a) -> Database -> IO a
+withQuery :: Monoid a => QueryType -> (Statement -> IO a) -> Database -> IO a
 withQuery qt f = withQuery' qt $ \q -> do
   r <- f q
   finish q
@@ -91,12 +94,14 @@ markList = withQuery' MarkList $ \q -> do
   execute_ q []
   map (\[u,t,l] -> (fromSql u, fromSql t, fromSql l)) =.< fetchAllRows q
 
-databaseOpen :: String -> IO Database
-databaseOpen dbinfo = do
+databaseOpen :: Maybe String -> IO Database
+databaseOpen (Just dbinfo) = do
   c <- connectPostgreSQL' dbinfo
   _ <- sRun c "SET search_path = uzbl, public, global" []
   q <- mapM (newMVar <=< prepare c) queries
   return $ Database c $ listArray (minBound, maxBound) q
+databaseOpen Nothing = return NoDatabase
 
 databaseClose :: Database -> IO ()
-databaseClose = disconnect . databaseConnection
+databaseClose Database{ databaseConnection = c } = disconnect c
+databaseClose NoDatabase = return ()

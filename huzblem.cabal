@@ -12,6 +12,21 @@ cabal-version:       >=1.10
 
 executable huzblem
   main-is:             huzblem.hs
+  other-modules:
+    Bind
+    Block
+    Config
+    Cookies
+    Database
+    DomainMap
+    Event
+    Keys
+    PrefixMap
+    Prompt
+    Scripts
+    URIs
+    Util
+    Uzbl
   default-language:    Haskell2010
   other-extensions:    PatternGuards, FlexibleContexts, TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables
   ghc-options: -dynamic -threaded -Wall -fno-warn-tabs
