@@ -53,7 +53,6 @@ rewrites = Map.fromAscList
   , ("netflix", ("http://www.netflix.com/Search?v1=" ?=))
   , ("oed",	("http://127.0.0.1:31780/search?searchType=dictionary&q=" ?=))
   , ("om",	("https://openstreetmap.org/?query=" ?=))
-  , ("op",      ("https://databrary.org/project/search?scope=all&q=" ?=))
   , ("rfc",	("http://tools.ietf.org/html/rfc" ?=)) -- "http://www.rfc-editor.org/rfc/rfc" ?= q ++ ".txt"
   , ("thes",	("http://thesaurus.reference.com/search?q=" ?=))
   , ("trackdhl", ("http://track.dhl-usa.com/TrackByNbr.asp?ShipmentNumber=" ?=))
@@ -75,7 +74,6 @@ aliases = Map.fromAscList
   , ("math",	"http://mathworld.wolfram.com/")
   , ("netflix", "http://dvd.netflix.com/Queue")
   , ("om",	"http://openstreetmap.org/")
-  , ("op",      "https://databrary.org/project/projects/databrary/work_packages")
   , ("radar",	"http://classic.wunderground.com/radar/radblast.asp?num=10&delay=50&noclutter=0&ID=JFK&type=TR0&showstorms=0&lightning=0&showlabels=0&rainsnow=1")
   ]
 
@@ -89,7 +87,7 @@ expandURI ('/':s) = "file://" ++ s
 expandURI ('~':s@('/':_)) = "file://" ++ home ++ s
 expandURI s = case find (`elem` ":. ") s of
   Just ':' -> s
-  Just '.' -> "http://" ++ s
+  Just '.' -> "https://" ++ s
   _ -> case break (' '==) s of
     (k,' ':t) | Just r <- Map.lookup k rewrites -> r t
     (k,"") | Just r <- Map.lookup k aliases -> r

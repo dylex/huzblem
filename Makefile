@@ -3,7 +3,7 @@ default: huzblem init.min.js all pguri.sql
 huzblem:
 	ghc --make -dynamic -threaded -O -Wall -fno-warn-tabs $@.hs -i -i. -o $@
 %.min.js: %.js
-	curl -Ss --data-urlencode "js_code@$<" -o $@ "http://marijnhaverbeke.nl/uglifyjs"
+	uglifyjs -o $@ $<
 
 hlint:
 	hlint -c .
