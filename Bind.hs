@@ -215,9 +215,9 @@ commandBinds = Map.fromAscList $
   [ ((0, show i),       digit i) | i <- [1..9]
   ] ++
   [ ((0, ":"),          promptComplete ":" "" commandCompleter $ \c -> run c)
+  , ((0, "="),          setVar "zoom_level" (ValFloat 1))
   , ((0, "?"),          prompt "?" "" $ search True)
   , ((0, "@"),	        void $ toggleOrCount "caret_browsing" onOff)
-  , ((0, "="),		setVar "zoom_level" (ValFloat 1))
   , ((0, "A"),	        uzblURI >>= \u -> prompt "uri " u (newUzbl . Just))
   , ((0, "Button2"),	button2)
   , ((0, "Button8"),	run "back")
@@ -245,7 +245,7 @@ commandBinds = Map.fromAscList $
   , ((0, "\\"),		toggleOrCount "view_source" onOff >> run "reload")
   , ((0, "]"),		linkSelect "next" $ Just "\\bnext|>$")
   , ((0, "^"),	        scroll "horizontal" "begin")
-  , ((0, "_"),	        run "zoom out")
+  , ((0, "_"),		run "zoom out")
   , ((0, "`"),	        captureImprobableIslandKey)
   , ((0, "a"),		promptURI (newUzbl . Just))
   , ((0, "e"),		runArgs "back" . return . show =<< count)
@@ -269,6 +269,7 @@ commandBinds = Map.fromAscList $
   , ((0, "z"),		run "stop")
   , ((0, "{"),	        void $ toggleOrCount "enable_spellcheck" onOff)
   , ((modCtrl, "m"),    promptMark True)
+  , ((modMod1, "="),	void $ toggleOrCount "zoom_text_only" onOff)
   , ((modMod1, "C"),    void $ toggleOrCount "cookie_policy" $ map ValInt [1,2,0])
   , ((modMod1, "a"),	void $ toggleOrCount "useragent" useragents) -- broken due to expansions...
   , ((modMod1, "b"),	promptBlock (Just False))
