@@ -241,6 +241,8 @@ commandBinds = Map.fromAscList $
   , ((0, "Right"),	scroll "horizontal" =<< scrlCount True)
   , ((0, "Tab"),	runScript $ scriptKeydown (0,"U+0009"))
   , ((0, "Up"),		scroll "vertical" =<< scrlCount False)
+  , ((0, "XF86Back"),   runArgs "back" [])
+  , ((0, "XF86Forward"), runArgs "forward" [])
   , ((0, "["),		linkSelect "prev" $ Just "\\bprev|^<")
   , ((0, "\\"),		toggleOrCount "view_source" onOff >> run "reload")
   , ((0, "]"),		linkSelect "next" $ Just "\\bnext|>$")
