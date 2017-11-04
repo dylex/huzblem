@@ -149,6 +149,7 @@ runUzbl sock cookies config debug uri = do
   mapM_ (\(k,v) -> hPutStrLn h $ "set " ++ k ++ ' ' : showValue v) $ Map.toList $ Map.union baseConfig $ Map.delete "uri" config
   mapM_ (\a -> hPutStrLn h $ unwords $ "cookie add" : map quote a) $ cookiesArgs cookies
   hPutStrLn h "cookie store cookies2.txt"
+  hPutStrLn h "search option wrap case_insensitive"
   hPutStrLn h ("css add " ++ quote (showValue (head stylesheets)) ++ " all")
   mapM_ (\u -> hPutStrLn h ("uri " ++ u)) uri
   hClose h
