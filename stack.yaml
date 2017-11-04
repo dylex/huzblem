@@ -1,6 +1,7 @@
-resolver: lts-6.35
+resolver: lts-9.11
 packages:
 - '.'
-extra-deps: []
+extra-deps:
+- HDBC-postgresql-2.3.2.5
 flags: {}
 extra-package-dbs: []
