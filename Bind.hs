@@ -175,6 +175,15 @@ toggleStylesheet = do
   run "css clear"
   runArgs "css" ["add", showValue css, "all"]
 
+toggleProxy :: UzblM ()
+toggleProxy = onCount
+  (void $ toggleVar var $ map socks ports)
+  (setVarMsg var . socks)
+  where
+  var = "proxy_url"
+  ports = [32368, 61238]
+  socks p = ValStr $ "socks5://127.0.0.1:" ++ show (p :: Int)
+
 improbableIslandKey :: ModKey -> UzblM ()
 improbableIslandKey mk = do
   go mk =<< gets uzblLastLoad
@@ -288,6 +297,7 @@ commandBinds = Map.fromAscList $
   , ((modMod1, "v"),	void $ toggleOrCount "block_verbose" onOff)
   , ((modMod1, "x"),    runArgs "load" ["html", "@(" ++ uzblHome "elinks-bookmarks" ++ ")@", "elinks-bookmarks"])
   , ((modCtrl .|. modMod1, "c"), cookieSave)
+  , ((modCtrl .|. modMod1, "p"), toggleProxy)
   ]
 
 commandBind :: ModKey -> UzblM ()
