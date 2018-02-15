@@ -39,7 +39,7 @@ infixr 5 ?=
 rewrites :: Map.Map String (String -> String)
 rewrites = Map.fromAscList
   [ ("amg",     ("http://www.allmusic.com/search/artist/" ?=))
-  , ("dd",      ("https://duckduckgo.com/html/?kp=-1&q=" ?=))
+  , ("dd",      ("https://duckduckgo.com/html/?kp=-1&kd=-1&q=" ?=))
   , ("dict",	("http://dictionary.reference.com/search?q=" ?=))
   , ("g",	("https://www.google.com/search?q=" ?=))
   , ("gi",	("https://www.google.com/search?tbm=isch&q=" ?=))
